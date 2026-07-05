@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
-import { CircleEllipsis, Image as ImageIcon, Loader2, Plus, Search, SendHorizontal, Smile, UserPlus, Users } from 'lucide-react'
+import { CircleEllipsis, Image as ImageIcon, Loader2, Plus, Search, SendHorizontal, Smile, UserPlus, Users, Video, Phone, Mic, Square } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 
 // Lazy-loaded so the emoji widget + its index stay out of the initial bundle.
@@ -33,6 +33,8 @@ type ChatViewProps = {
 	onUpdateRoomDetails?: (conversationId: number, updates: { name?: string; description?: string }) => Promise<void>
 	onRemoveMembersFromRoom?: (conversationId: number, memberIds: number[]) => Promise<void>
 	onRetryMessage?: (conversationId: number, messageId: number) => void
+	onStartVideoCall?: () => void
+	onStartAudioCall?: () => void
 	isSendDisabled?: boolean
 	isDarkMode?: boolean
 }
@@ -53,6 +55,8 @@ export function ChatView({
 	onUpdateRoomDetails,
 	onRemoveMembersFromRoom,
 	onRetryMessage,
+	onStartVideoCall,
+	onStartAudioCall,
 	isSendDisabled = false,
 	isDarkMode = false,
 }: ChatViewProps) {
@@ -117,6 +121,14 @@ export function ChatView({
 	const messagesContentRef = useRef<HTMLDivElement | null>(null)
 	const emojiPickerRef = useRef<HTMLDivElement | null>(null)
 	const fileInputRef = useRef<HTMLInputElement | null>(null)
+	
+	// Voice Recording State
+	const [isRecording, setIsRecording] = useState(false)
+	const [recordingTime, setRecordingTime] = useState(0)
+	const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+	const audioChunksRef = useRef<Blob[]>([])
+	const recordingIntervalRef = useRef<number | null>(null)
+
 	const typingStopTimeoutRef = useRef<number | null>(null)
 	const isTypingBurstActiveRef = useRef(false)
 	const shouldStickToBottomRef = useRef(true)
@@ -231,6 +243,62 @@ export function ChatView({
 			container.removeEventListener('scroll', handleScroll)
 		}
 	}, [conversationId])
+
+	const startRecording = async () => {
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+			const mediaRecorder = new MediaRecorder(stream)
+			mediaRecorderRef.current = mediaRecorder
+			audioChunksRef.current = []
+
+			mediaRecorder.ondataavailable = (event) => {
+				if (event.data.size > 0) {
+					audioChunksRef.current.push(event.data)
+				}
+			}
+
+			mediaRecorder.onstop = async () => {
+				const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+				const file = new File([audioBlob], 'voice-message.webm', { type: 'audio/webm' })
+				if (onUploadMedia && conversation) {
+					try {
+						await onUploadMedia(conversation.id, file)
+					} catch (e) {
+						console.error('[WebRTC] Voice message upload failed', e)
+					}
+				}
+				stream.getTracks().forEach((track) => track.stop())
+				setRecordingTime(0)
+			}
+
+			mediaRecorder.start()
+			setIsRecording(true)
+			setRecordingTime(0)
+			recordingIntervalRef.current = window.setInterval(() => {
+				setRecordingTime(prev => prev + 1)
+			}, 1000)
+		} catch (e) {
+			console.error('[WebRTC] Failed to start recording', e)
+			alert('Could not access microphone for voice message.')
+		}
+	}
+
+	const stopRecording = () => {
+		if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+			mediaRecorderRef.current.stop()
+		}
+		setIsRecording(false)
+		if (recordingIntervalRef.current) {
+			window.clearInterval(recordingIntervalRef.current)
+			recordingIntervalRef.current = null
+		}
+	}
+
+	const formatRecordingTime = (seconds: number) => {
+		const mins = Math.floor(seconds / 60)
+		const secs = seconds % 60
+		return `${mins}:${secs.toString().padStart(2, '0')}`
+	}
 
 	useEffect(() => {
 		shouldStickToBottomRef.current = true
@@ -585,6 +653,26 @@ export function ChatView({
 									<Users size={18} />
 								</button>
 							)}
+							{(!conversation.isGroup) && (
+								<>
+									<button
+										type="button"
+										onClick={onStartAudioCall}
+										className="md-state inline-flex h-10 w-10 items-center justify-center rounded-full text-md-on-surface-variant hover:bg-md-secondary-container hover:text-md-on-secondary-container"
+										aria-label="start audio call"
+									>
+										<Phone size={18} />
+									</button>
+									<button
+										type="button"
+										onClick={onStartVideoCall}
+										className="md-state inline-flex h-10 w-10 items-center justify-center rounded-full text-md-on-surface-variant hover:bg-md-secondary-container hover:text-md-on-secondary-container"
+										aria-label="start video call"
+									>
+										<Video size={18} />
+									</button>
+								</>
+							)}
 							<button
 								type="button"
 								onClick={() => setIsSearchOpen((previous) => {
@@ -750,58 +838,82 @@ export function ChatView({
 								<ImageIcon size={18} />
 							</button>
 
-							<div className="relative min-h-11 flex-1">
-								<textarea
-									value={draft}
-									onChange={(event) => {
-										setDraftForConversation(event.target.value)
-										if (event.target.value.trim().length === 0) {
-											stopTyping()
-											return
-										}
-
-										startTyping()
-									}}
-									onKeyDown={onKeyDown}
-									disabled={isSendDisabled}
-									rows={1}
-									placeholder={`Type your message to ${conversation.name}…`}
-									className="min-h-11 w-full resize-none bg-transparent px-2 py-2 text-sm text-md-on-surface outline-none placeholder:text-md-on-surface-variant disabled:cursor-not-allowed disabled:opacity-60"
-								/>
-							</div>
-
-							<div ref={emojiPickerRef} className="relative">
-								<button
-									type="button"
-									onClick={() => setIsEmojiOpen((prev) => !prev)}
-									className={`md-state inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 ${isEmojiOpen ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
-									aria-label="emoji"
-									aria-expanded={isEmojiOpen}
-								>
-									<Smile size={18} />
-								</button>
-								{isEmojiOpen && (
-									<div className="motion-popover absolute bottom-12 right-0 z-20 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-md3-lg bg-md-surface-container-high shadow-md3-3">
-										<Suspense
-											fallback={
-												<div className="flex h-[380px] items-center justify-center text-md-on-surface-variant">
-													<Loader2 className="animate-spin" size={22} aria-label="loading emoji picker" />
-												</div>
-											}
-										>
-											<EmojiPickerPanel isDarkMode={isDarkMode} onSelect={onSelectEmoji} />
-										</Suspense>
+							<div className="relative min-h-11 flex-1 flex items-center">
+								{isRecording ? (
+									<div className="flex w-full items-center justify-between px-4 text-md-error font-medium animate-pulse">
+										<div className="flex items-center gap-2">
+											<Mic size={18} />
+											<span>Recording...</span>
+										</div>
+										<span>{formatRecordingTime(recordingTime)}</span>
 									</div>
+								) : (
+									<textarea
+										value={draft}
+										onChange={(event) => {
+											setDraftForConversation(event.target.value)
+											if (event.target.value.trim().length === 0) {
+												stopTyping()
+												return
+											}
+											startTyping()
+										}}
+										onKeyDown={onKeyDown}
+										disabled={isSendDisabled}
+										rows={1}
+										placeholder={`Type your message to ${conversation.name}…`}
+										className="min-h-11 w-full resize-none bg-transparent px-2 py-2 text-sm text-md-on-surface outline-none placeholder:text-md-on-surface-variant disabled:cursor-not-allowed disabled:opacity-60"
+									/>
 								)}
 							</div>
-							<button
-								type="submit"
-								disabled={isSendDisabled}
-								className="md-state inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-md-primary text-md-on-primary shadow-md3-1 transition-shadow duration-200 ease-md-standard hover:shadow-md3-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-high active:scale-95 disabled:pointer-events-none disabled:opacity-40"
-								aria-label="send message"
-							>
-								<SendHorizontal size={18} />
-							</button>
+
+							{!isRecording && (
+								<div ref={emojiPickerRef} className="relative">
+									<button
+										type="button"
+										onClick={() => setIsEmojiOpen((prev) => !prev)}
+										className={`md-state inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 ${isEmojiOpen ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
+										aria-label="emoji"
+										aria-expanded={isEmojiOpen}
+									>
+										<Smile size={18} />
+									</button>
+									{isEmojiOpen && (
+										<div className="motion-popover absolute bottom-12 right-0 z-20 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-md3-lg bg-md-surface-container-high shadow-md3-3">
+											<Suspense
+												fallback={
+													<div className="flex h-[380px] items-center justify-center text-md-on-surface-variant">
+														<Loader2 className="animate-spin" size={22} aria-label="loading emoji picker" />
+													</div>
+												}
+											>
+												<EmojiPickerPanel isDarkMode={isDarkMode} onSelect={onSelectEmoji} />
+											</Suspense>
+										</div>
+									)}
+								</div>
+							)}
+							
+							{draft.trim().length > 0 ? (
+								<button
+									type="submit"
+									disabled={isSendDisabled}
+									className="md-state inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-md-primary text-md-on-primary shadow-md3-1 transition-shadow duration-200 ease-md-standard hover:shadow-md3-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-high active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+									aria-label="send message"
+								>
+									<SendHorizontal size={18} />
+								</button>
+							) : (
+								<button
+									type="button"
+									disabled={isSendDisabled}
+									onClick={isRecording ? stopRecording : startRecording}
+									className={`md-state inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-md3-1 transition-all duration-200 ease-md-standard hover:shadow-md3-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-high active:scale-95 disabled:pointer-events-none disabled:opacity-40 ${isRecording ? 'bg-md-error text-md-on-error hover:scale-110' : 'bg-md-primary text-md-on-primary'}`}
+									aria-label={isRecording ? "stop recording" : "record voice message"}
+								>
+									{isRecording ? <Square size={18} /> : <Mic size={18} />}
+								</button>
+							)}
 						</div>
 					</div>
 					<p className="mt-2 text-right text-xs text-[var(--text-muted)]">

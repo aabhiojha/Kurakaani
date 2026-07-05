@@ -127,6 +127,11 @@ export function ChatMessage({ message, isGroupedWithPrevious, isGroupedWithNext,
 										<video src={mediaUrl} controls className="max-h-80 w-full rounded-md3-xs" />
 									</div>
 								)}
+								{mediaUrl && message.messageType === 'AUDIO' && (
+									<div className="mt-2 overflow-hidden rounded-full bg-md-surface-container-low px-3 py-1.5 shadow-inner">
+										<audio src={mediaUrl} controls className="h-8 max-w-[200px] sm:max-w-[250px] outline-none [&::-webkit-media-controls-panel]:bg-transparent" />
+									</div>
+								)}
 							</div>
 							{/* MD3 tooltip — inverse surface */}
 							<div
