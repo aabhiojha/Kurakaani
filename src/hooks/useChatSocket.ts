@@ -643,5 +643,6 @@ export function useChatSocket({
 		handleRetryMessage,
 		disconnectAndCleanup,
 		pendingSentMessagesRef,
+		chatSocketService: chatSocketRef.current,
 	}
 }

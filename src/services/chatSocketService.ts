@@ -36,6 +36,13 @@ export type FriendRequestNotificationPayload = {
 	legacyFriendship?: FriendshipResponse
 }
 
+export type WebRtcSignal = {
+	type: string
+	targetUsername: string
+	senderUsername?: string
+	data: any
+}
+
 export type DmNotificationPayload = {
 	messageId?: string
 	roomId?: string
@@ -96,6 +103,7 @@ export class ChatSocketService {
 	private typingSubscriptions = new Map<number, StompSubscription>()
 	private directMessageSubscription: StompSubscription | null = null
 	private notificationSubscription: StompSubscription | null = null
+	private webRtcSubscription: StompSubscription | null = null
 	private debug = false
 
 	setDebug(enabled: boolean) {
@@ -358,6 +366,41 @@ export class ChatSocketService {
 		this.log('unsubscribed from notifications', { destination: '/user/queue/notifications' })
 	}
 
+	subscribeToWebRTC(onSignal: (signal: WebRtcSignal) => void) {
+		if (this.webRtcSubscription) {
+			this.webRtcSubscription.unsubscribe()
+			this.webRtcSubscription = null
+		}
+
+		this.webRtcSubscription = this.subscribeToDestination('/user/queue/webrtc', (frame: IMessage) => {
+			this.log('incoming webrtc frame', { body: frame.body })
+			onSignal(JSON.parse(frame.body) as WebRtcSignal)
+		})
+
+		this.log('subscribed to webrtc signals', { destination: '/user/queue/webrtc' })
+		return this.webRtcSubscription
+	}
+
+	unsubscribeWebRTC() {
+		this.webRtcSubscription?.unsubscribe()
+		this.webRtcSubscription = null
+		this.log('unsubscribed from webrtc signals', { destination: '/user/queue/webrtc' })
+	}
+
+	sendWebRtcSignal(signal: WebRtcSignal) {
+		if (!this.client?.connected) {
+			return false
+		}
+
+		this.client.publish({
+			destination: `/app/webrtc/signal`,
+			body: JSON.stringify(signal),
+		})
+		this.log('published webrtc signal', { destination: `/app/webrtc/signal`, signal })
+
+		return true
+	}
+
 	unsubscribeDirectMessages() {
 		this.directMessageSubscription?.unsubscribe()
 		this.directMessageSubscription = null
@@ -401,6 +444,7 @@ export class ChatSocketService {
 		this.typingSubscriptions.forEach((subscription) => subscription.unsubscribe())
 		this.typingSubscriptions.clear()
 		this.unsubscribeDirectMessages()
+		this.unsubscribeWebRTC()
 		this.notificationSubscription?.unsubscribe()
 		this.notificationSubscription = null
 		this.client?.deactivate()
