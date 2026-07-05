@@ -31,12 +31,18 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
     @Query("""
              Select new com.abhishekojha.kurakanimonolith.modules.room.dto.roomList.RoomListDto(
                  r.id,
-                 r.name,
+                 CASE 
+                     WHEN r.type = 'DM' THEN (
+                         SELECT u.userName FROM RoomMember rm2 JOIN rm2.user u 
+                         WHERE rm2.room.id = r.id AND u.id != :userId
+                     )
+                     ELSE r.name
+                 END,
                  r.description,
                  r.type,
                  SIZE(r.members)
                 )
-                  FROM Room  r
+                  FROM Room r
                   join r.members rm
                   where rm.user.id =:userId
             """
