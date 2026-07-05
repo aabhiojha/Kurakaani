@@ -3,7 +3,7 @@ import type { Conversation, Message, ChatSection } from '../types/chat'
 import type { SidebarView } from '../components/layout/Sidebar'
 
 export const isChatSection = (view: SidebarView): view is ChatSection =>
-	view === 'direct' || view === 'groups'
+	view === 'chats'
 
 export const getAvatarFromName = (name: string, fallback: string): string => {
 	const avatar = name
@@ -59,7 +59,7 @@ export const mapRoomToConversation = (room: RoomSummaryResponse): Conversation =
 				: room.recentMessage?.content || room.description || 'No messages yet'
 	return {
 		id: room.id,
-		section: isGroup ? 'groups' : 'direct',
+		section: 'chats',
 		name: room.name,
 		description: room.description,
 		subtitle: isGroup ? `${room.memberCount} MEMBERS` : 'DIRECT MESSAGE',

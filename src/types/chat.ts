@@ -1,4 +1,4 @@
-export type ChatSection = 'direct' | 'groups'
+export type ChatSection = 'chats'
 
 export type Message = {
 	id: number
@@ -10,7 +10,7 @@ export type Message = {
 	senderId?: number
 	text: string
 	timestamp: string
-	messageType?: 'TEXT' | 'IMAGE' | 'VIDEO'
+	messageType?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO'
 	mediaUrl?: string
 	mediaContentType?: string
 	mediaFileName?: string

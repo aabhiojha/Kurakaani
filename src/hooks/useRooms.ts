@@ -26,13 +26,13 @@ const MESSAGES_STORAGE_KEY = 'kurakaani-messages-state'
 const SELECTED_CONVERSATION_STORAGE_KEY = 'kurakaani-selected-conversation-id'
 
 const loadPersistedConversations = (): Record<ChatSection, Conversation[]> => {
-	const empty: Record<ChatSection, Conversation[]> = { direct: [], groups: [] }
+	const empty: Record<ChatSection, Conversation[]> = { chats: [] }
 	if (typeof window === 'undefined') return empty
 	try {
 		const raw = window.localStorage.getItem(CONVERSATIONS_STORAGE_KEY)
 		if (!raw) return empty
 		const parsed = JSON.parse(raw) as Record<ChatSection, Conversation[]>
-		if (!Array.isArray(parsed?.direct) || !Array.isArray(parsed?.groups)) return empty
+		if (!Array.isArray(parsed?.chats)) return empty
 		return parsed
 	} catch {
 		return empty
@@ -54,7 +54,7 @@ export function useRooms(
 	session: SessionState | null,
 	currentUserProfile: CurrentUserResponse | undefined,
 	setBackendStatus: (status: string) => void,
-	setActiveView: (view: 'groups' | 'direct') => void,
+	setActiveView: (view: 'chats') => void,
 ) {
 	const [conversationsState, setConversationsState] = useState<Record<ChatSection, Conversation[]>>(
 		() => loadPersistedConversations(),
@@ -106,10 +106,10 @@ export function useRooms(
 				const rooms = await getRooms()
 				if (cancelled || !Array.isArray(rooms)) return
 
-				const nextConversations: Record<ChatSection, Conversation[]> = { direct: [], groups: [] }
+				const nextConversations: Record<ChatSection, Conversation[]> = { chats: [] }
 				for (const room of rooms) {
 					const conversation = mapRoomToConversation(room)
-					nextConversations[conversation.section].push(conversation)
+					nextConversations.chats.push(conversation)
 				}
 
 				const messageResults = await Promise.allSettled(
@@ -132,19 +132,17 @@ export function useRooms(
 
 				if (cancelled) return
 
-				if (nextConversations.direct.length > 0 || nextConversations.groups.length > 0) {
+				if (nextConversations.chats.length > 0) {
 					setConversationsState(nextConversations)
 					setMessagesByConversation((prev) => ({ ...prev, ...nextMessages }))
 					setSelectedConversationId((prev) => {
 						if (prev === null) return null
-						const exists =
-							nextConversations.direct.some((c) => c.id === prev) ||
-							nextConversations.groups.some((c) => c.id === prev)
+						const exists = nextConversations.chats.some((c) => c.id === prev)
 						return exists ? prev : null
 					})
 					setBackendStatus(`Loaded ${rooms.length} rooms from backend.`)
 				} else {
-					setConversationsState({ direct: [], groups: [] })
+					setConversationsState({ chats: [] })
 					setMessagesByConversation({})
 					setSelectedConversationId(null)
 					setBackendStatus('No backend rooms found yet. Create a room to start chatting.')
@@ -199,7 +197,7 @@ export function useRooms(
 					unreadCount: c.unreadCount ?? 0,
 				}
 			}
-			return { ...prev, direct: prev.direct.map(apply), groups: prev.groups.map(apply) }
+			return { chats: prev.chats.map(apply) }
 		})
 	}, [])
 
@@ -227,8 +225,7 @@ export function useRooms(
 			}
 
 			return {
-				direct: updateList(prev.direct),
-				groups: updateList(prev.groups),
+				chats: updateList(prev.chats),
 			}
 		})
 	}, [])
@@ -246,8 +243,7 @@ export function useRooms(
 				)
 
 			return {
-				direct: resetList(prev.direct),
-				groups: resetList(prev.groups),
+				chats: resetList(prev.chats),
 			}
 		})
 	}, [])
@@ -259,7 +255,7 @@ export function useRooms(
 		isGroup: boolean,
 	): Conversation => ({
 		id: roomId,
-		section: isGroup ? 'groups' : 'direct',
+		section: 'chats',
 		name,
 		description,
 		subtitle: isGroup ? 'NEW GROUP' : 'DIRECT MESSAGE',
@@ -272,10 +268,8 @@ export function useRooms(
 	}), [])
 
 	const addLocalConversation = useCallback((conversation: Conversation, systemText: string) => {
-		const section = conversation.isGroup ? 'groups' : 'direct'
 		setConversationsState((prev) => ({
-			...prev,
-			[section]: [conversation, ...prev[section]],
+			chats: [conversation, ...prev.chats],
 		}))
 		const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 		setMessagesByConversation((prev) => ({
@@ -317,7 +311,7 @@ export function useRooms(
 				buildConversation(id, name, nextDescription, false),
 				`Direct chat with "${name}" created.`,
 			)
-			setActiveView('direct')
+			setActiveView('chats')
 			setBackendStatus('Direct chat created locally. Sign in to create DMs on backend.')
 			return { ok: true as const }
 		}
@@ -332,7 +326,7 @@ export function useRooms(
 				buildConversation(id, `User #${userId}`, nextDescription, false),
 				`Direct chat with "User #${userId}" created.`,
 			)
-			setActiveView('direct')
+			setActiveView('chats')
 			setBackendStatus(`Direct chat with user ${userId} created on backend.`)
 			return { ok: true as const }
 		} catch {
@@ -342,21 +336,15 @@ export function useRooms(
 
 	const handleAddUsersToRoom = useCallback(async (conversationId: number, userIds: number[]) => {
 		const conversation =
-			conversationsState.direct.find((c) => c.id === conversationId) ??
-			conversationsState.groups.find((c) => c.id === conversationId)
+			conversationsState.chats.find((c) => c.id === conversationId)
 
 		if (conversation && !conversation.isGroup) {
 			await upgradeRoomToGroup(conversationId, userIds)
 			setConversationsState((prev) => {
-				const existing = prev.direct.find((c) => c.id === conversationId)
+				const existing = prev.chats.find((c) => c.id === conversationId)
 				if (!existing) return prev
 				return {
-					...prev,
-					direct: prev.direct.filter((c) => c.id !== conversationId),
-					groups: [
-						{ ...existing, section: 'groups', isGroup: true, subtitle: 'GROUP' },
-						...prev.groups.filter((c) => c.id !== conversationId),
-					],
+					chats: prev.chats.map(c => c.id === conversationId ? { ...c, isGroup: true, subtitle: 'GROUP' } : c),
 				}
 			})
 			setActiveView('groups')
@@ -459,7 +447,7 @@ export function useRooms(
 	}, [currentUserProfile?.profileImageUrl, pendingMediaUploadsRef, session?.accessToken, session?.user.id, session?.user.profileImageUrl, setBackendStatus, setMessagesByConversation, touchConversation])
 
 	const clearRooms = useCallback(() => {
-		setConversationsState({ direct: [], groups: [] })
+		setConversationsState({ chats: [] })
 		setMessagesByConversation({})
 		setSelectedConversationId(null)
 		setRoomMembersByConversation({})

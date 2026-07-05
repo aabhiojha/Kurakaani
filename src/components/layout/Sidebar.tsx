@@ -129,8 +129,7 @@ export function Sidebar({
 					Navigation
 				</p>
 				<nav className="space-y-1">
-					<NavItem icon={<Users size={18} />} label="Groups" active={activeView === 'groups'} onClick={() => onSectionChange('groups')} />
-					<NavItem icon={<MessageSquare size={18} />} label="Direct Messages" active={activeView === 'direct'} onClick={() => onSectionChange('direct')} />
+					<NavItem icon={<MessageSquare size={18} />} label="Chats" active={activeView === 'chats'} onClick={() => onSectionChange('chats')} />
 					<NavItem icon={<Search size={18} />} label="Find People" active={activeView === 'people'} onClick={() => onSectionChange('people')} />
 					<NavItem icon={<UserPlus size={18} />} label="Friend Requests" active={activeView === 'friend-requests'} onClick={() => onSectionChange('friend-requests')} />
 					<NavItem icon={<Settings size={18} />} label="Settings" active={activeView === 'settings'} onClick={() => onSectionChange('settings')} />
@@ -164,19 +163,11 @@ export function Sidebar({
 							<div className="motion-popover absolute bottom-full left-0 mb-2 w-full rounded-md3-md bg-md-surface-container-high p-2 shadow-md3-3">
 								<button
 									type="button"
-									onClick={() => handleNewChatOption('direct')}
+									onClick={() => handleNewChatOption('chats')}
 									className="md-state flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-left text-sm font-medium text-md-on-surface"
 								>
 									<MessageSquare size={16} />
-									New DM
-								</button>
-								<button
-									type="button"
-									onClick={() => handleNewChatOption('groups')}
-									className="md-state mt-1 flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-left text-sm font-medium text-md-on-surface"
-								>
-									<Users size={16} />
-									New Group
+									New Chat
 								</button>
 							</div>
 						)}

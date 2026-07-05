@@ -1,10 +1,10 @@
 import type { ChatSection, Conversation, Message } from '../types/chat'
 
 export const conversationsBySection: Record<ChatSection, Conversation[]> = {
-	direct: [
+	chats: [
 		{
 			id: 1,
-			section: 'direct',
+			section: 'chats',
 			name: 'Elena Vance',
 			subtitle: 'PRODUCT DESIGNER',
 			time: '12:45 PM',
@@ -15,7 +15,7 @@ export const conversationsBySection: Record<ChatSection, Conversation[]> = {
 		},
 		{
 			id: 2,
-			section: 'direct',
+			section: 'chats',
 			name: 'Marcus Chen',
 			subtitle: 'BACKEND ENGINEER',
 			time: '09:12 AM',
@@ -26,7 +26,7 @@ export const conversationsBySection: Record<ChatSection, Conversation[]> = {
 		},
 		{
 			id: 3,
-			section: 'direct',
+			section: 'chats',
 			name: 'Sofia Rivera',
 			subtitle: 'PROJECT MANAGER',
 			time: 'Monday',
@@ -35,11 +35,9 @@ export const conversationsBySection: Record<ChatSection, Conversation[]> = {
 			isGroup: false,
 			online: true,
 		},
-	],
-	groups: [
 		{
 			id: 101,
-			section: 'groups',
+			section: 'chats',
 			name: 'Design Team',
 			subtitle: '8 MEMBERS',
 			time: 'Yesterday',
@@ -49,7 +47,7 @@ export const conversationsBySection: Record<ChatSection, Conversation[]> = {
 		},
 		{
 			id: 102,
-			section: 'groups',
+			section: 'chats',
 			name: 'Product Squad',
 			subtitle: '11 MEMBERS',
 			time: '11:10 AM',

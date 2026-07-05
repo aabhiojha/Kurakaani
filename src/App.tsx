@@ -34,6 +34,9 @@ import { useLayout } from './hooks/useLayout'
 import { useFriendships } from './hooks/useFriendships'
 import { useRooms } from './hooks/useRooms'
 import { useChatSocket } from './hooks/useChatSocket'
+import { useWebRTC } from './hooks/useWebRTC'
+import { VideoCallOverlay } from './components/chat/VideoCallOverlay'
+import { Phone, PhoneOff, Video } from 'lucide-react'
 import type { ChatSection } from './types/chat'
 import type { CurrentUserResponse, SessionState } from './types/api/session'
 import type { NotificationEvent } from './services/chatSocketService'
@@ -44,7 +47,7 @@ type AuthActionResult = { ok: true; message?: string } | { ok: false; error: str
 const ACTIVE_VIEW_STORAGE_KEY = 'kurakaani-active-view'
 
 const isSidebarView = (value: string | null): value is SidebarView =>
-	value === 'direct' ||
+	value === 'chats' ||
 	value === 'groups' ||
 	value === 'people' ||
 	value === 'friend-requests' ||
@@ -54,9 +57,9 @@ const isSidebarView = (value: string | null): value is SidebarView =>
 function App() {
 	const [authView, setAuthView] = useState<'login' | 'signup' | 'password-reset' | 'token-reset'>('login')
 	const [activeView, setActiveView] = useState<SidebarView>(() => {
-		if (typeof window === 'undefined') return 'direct'
+		if (typeof window === 'undefined') return 'chats'
 		const saved = window.localStorage.getItem(ACTIVE_VIEW_STORAGE_KEY)
-		return isSidebarView(saved) ? saved : 'direct'
+		return isSidebarView(saved) ? saved : 'chats'
 	})
 	const [session, setSession] = useState<SessionState | null>(() => getSession())
 	const [backendStatus, setBackendStatus] = useState('Checking backend connection...')
@@ -112,15 +115,14 @@ function App() {
 		clearRooms,
 	} = rooms
 
-	const activeSection: ChatSection = isChatSection(activeView) ? activeView : 'direct'
+	const activeSection: ChatSection = isChatSection(activeView) ? activeView : 'chats'
 	const activeConversations = conversationsState[activeSection]
 
 	const activeConversation = useMemo(() => {
 		if (selectedConversationId === null) return undefined
 		return (
-			conversationsState[activeSection].find((c) => c.id === selectedConversationId) ??
-			conversationsState.direct.find((c) => c.id === selectedConversationId) ??
-			conversationsState.groups.find((c) => c.id === selectedConversationId)
+			conversationsState.chats.find((c) => c.id === selectedConversationId) ??
+			conversationsState.chats.find((c) => c.id === selectedConversationId)
 		)
 	}, [activeSection, conversationsState, selectedConversationId])
 
@@ -147,7 +149,26 @@ function App() {
 		handleSendMessage,
 		handleRetryMessage,
 		disconnectAndCleanup,
+		chatSocketService,
 	} = chatSocket
+
+	const {
+		localStream,
+		remoteStream,
+		isCalling,
+		incomingCall,
+		startCall,
+		acceptCall,
+		rejectCall,
+		endCall,
+		switchCamera,
+		hasMultipleCameras,
+		isAudioOnly,
+		isScreenSharing,
+		toggleScreenShare,
+		targetUser,
+		networkQuality,
+	} = useWebRTC(chatSocketService, isSocketConnected, currentUserProfile?.userName ?? session?.user.name)
 
 	const activeTypingUsers = activeConversation ? (typingUsersByConversation[activeConversation.id] ?? []) : []
 	const sidebarUserName = currentUserProfile?.userName ?? session?.user.name
@@ -500,13 +521,13 @@ function App() {
 
 		if (event.type === 'DM') {
 			const preview = event.payload.preview?.trim()
-			const title = 'New direct message'
-			applyRoomPreview(getNotificationRoomId(), preview)
-			setBackendStatus(preview ? `New direct message: ${preview}` : 'New direct message received.')
+			const title = 'New message'
+			const body = preview ?? 'You have a new message.'
+			setBackendStatus(preview ? `New message: ${preview}` : 'New message received.')
 			pushNotification({
 				type: 'DM',
 				title,
-				body: preview ?? 'You have a new direct message.',
+				body: preview ?? 'You have a new message.',
 			})
 			return
 		}
@@ -553,7 +574,7 @@ function App() {
 
 	if (!session?.accessToken) {
 		return (
-			<div data-theme={isDarkMode ? 'dark' : 'light'} className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] antialiased">
+			<div data-theme={isDarkMode ? 'dark' : 'light'} className="min-h-screen bg-md-background text-md-on-surface antialiased">
 				<NotificationToasts notifications={notifications} onDismiss={dismissNotification} />
 				{authView === 'login' ? (
 					<LoginPage
@@ -608,6 +629,22 @@ function App() {
 		onRetryMessage: handleRetryMessage,
 		isSendDisabled: Boolean(session?.accessToken) && !isSocketConnected,
 		isDarkMode,
+		onStartVideoCall: () => {
+			if (activeConversation && !activeConversation.isGroup) {
+				const otherMember = activeRoomMembers.find((m) => m.userId !== (currentUserProfile?.id ?? session?.user.id))
+				if (otherMember) {
+					startCall(otherMember.username, false)
+				}
+			}
+		},
+		onStartAudioCall: () => {
+			if (activeConversation && !activeConversation.isGroup) {
+				const otherMember = activeRoomMembers.find((m) => m.userId !== (currentUserProfile?.id ?? session?.user.id))
+				if (otherMember) {
+					startCall(otherMember.username, true)
+				}
+			}
+		}
 	} as const
 
 	const sharedRecentPanelProps = {
@@ -793,6 +830,73 @@ function App() {
 					<div className="min-h-0 flex flex-1 min-w-0 overflow-hidden">{renderMainContent()}</div>
 				</div>
 			</div>
+
+			{/* WebRTC Video Call Overlays */}
+			{incomingCall && !isCalling && (
+				<div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-4 backdrop-blur-xl transition-all font-sans">
+					<div className="bg-zinc-900/80 border border-white/10 p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center backdrop-blur-3xl transform scale-100 animate-in fade-in zoom-in duration-300">
+						<div className="relative w-28 h-28 mx-auto mb-6">
+							{/* Pulsing background rings */}
+							<div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+							<div className="absolute inset-0 bg-green-500/40 rounded-full animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+							{/* Core icon */}
+							<div className="relative w-full h-full bg-gradient-to-tr from-green-500 to-emerald-400 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.5)]">
+								{incomingCall.callType === 'audio' ? (
+									<Phone size={40} className="text-white animate-pulse" />
+								) : (
+									<Video size={40} className="text-white animate-pulse" />
+								)}
+							</div>
+						</div>
+						
+						<h3 className="text-2xl font-light text-white mb-2 tracking-wide">Incoming {incomingCall.callType === 'audio' ? 'Audio' : 'Video'} Call</h3>
+						<p className="text-zinc-400 mb-10 text-lg">
+							<span className="font-medium text-white">{incomingCall.senderUsername}</span> is calling...
+						</p>
+						
+						<div className="flex justify-center gap-6">
+							<button 
+								type="button"
+								onClick={rejectCall} 
+								className="flex flex-col items-center gap-2 group"
+							>
+								<div className="w-16 h-16 bg-red-500/20 group-hover:bg-red-500 rounded-full flex items-center justify-center text-red-500 group-hover:text-white transition-all duration-300 border border-red-500/50 group-hover:border-transparent group-hover:shadow-[0_0_20px_rgba(239,68,68,0.6)] group-hover:scale-110">
+									<PhoneOff size={28} />
+								</div>
+								<span className="text-zinc-400 text-sm font-medium group-hover:text-white transition-colors">Decline</span>
+							</button>
+
+							<button 
+								type="button"
+								onClick={acceptCall} 
+								className="flex flex-col items-center gap-2 group"
+							>
+								<div className="w-16 h-16 bg-green-500 group-hover:bg-green-400 rounded-full flex items-center justify-center text-white transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.4)] group-hover:shadow-[0_0_30px_rgba(34,197,94,0.6)] group-hover:scale-110">
+									<Phone size={28} className="animate-[wiggle_1s_ease-in-out_infinite]" />
+								</div>
+								<span className="text-zinc-400 text-sm font-medium group-hover:text-white transition-colors">Accept</span>
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{isCalling && (
+				<VideoCallOverlay
+					localStream={localStream}
+					remoteStream={remoteStream}
+					onEndCall={endCall}
+					onSwitchCamera={switchCamera}
+					hasMultipleCameras={hasMultipleCameras}
+					isAudioOnly={isAudioOnly}
+					isScreenSharing={isScreenSharing}
+					onToggleScreenShare={toggleScreenShare}
+					networkQuality={networkQuality}
+					remoteUsername={targetUser || incomingCall?.senderUsername || 'User'}
+					remoteUserProfileImageUrl={
+						activeRoomMembers.find((m) => m.username === (targetUser || incomingCall?.senderUsername))?.profileImageUrl
+					}
+				/>
+			)}
 		</div>
 	)
 }
