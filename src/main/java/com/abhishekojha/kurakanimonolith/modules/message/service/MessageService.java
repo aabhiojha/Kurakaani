@@ -2,6 +2,7 @@ package com.abhishekojha.kurakanimonolith.modules.message.service;
 
 import com.abhishekojha.kurakanimonolith.modules.message.dto.MessageRequest;
 import com.abhishekojha.kurakanimonolith.modules.message.dto.MessageDto;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
@@ -22,7 +23,7 @@ public interface MessageService {
     );
 
 
-    List<MessageDto> searchMessagesInRoom(Long roomId, String searchText, Principal principal);
+    List<MessageDto> searchMessagesInRoom(Long roomId, String searchText, Pageable pageable, Principal principal);
 
-    List<MessageDto> searchMessagesAcrossRooms(Principal principal, String searchText);
+    List<MessageDto> searchMessagesAcrossRooms(Principal principal, String searchText, Pageable pageable);
 }

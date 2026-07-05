@@ -1,6 +1,7 @@
 package com.abhishekojha.kurakanimonolith.modules.message.service;
 
 import com.abhishekojha.kurakanimonolith.common.exception.exceptions.BadRequestException;
+import com.abhishekojha.kurakanimonolith.common.exception.exceptions.FileStorageException;
 import com.abhishekojha.kurakanimonolith.common.exception.exceptions.ResourceNotFoundException;
 import com.abhishekojha.kurakanimonolith.common.exception.exceptions.UnauthorizedException;
 import com.abhishekojha.kurakanimonolith.common.objectStorage.S3Operations;
@@ -14,15 +15,18 @@ import com.abhishekojha.kurakanimonolith.modules.message.repository.MessageRepos
 import com.abhishekojha.kurakanimonolith.modules.room.model.Room;
 import com.abhishekojha.kurakanimonolith.modules.room.model.RoomType;
 import com.abhishekojha.kurakanimonolith.modules.room.repository.RoomRepository;
+import com.abhishekojha.kurakanimonolith.modules.room_member.model.RoomMember;
 import com.abhishekojha.kurakanimonolith.modules.room_member.repository.RoomMemberRepository;
 import com.abhishekojha.kurakanimonolith.modules.user.model.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 
@@ -38,6 +42,9 @@ public class MessageServiceImpl implements MessageService {
     private final S3Operations s3Operations;
     private final SecurityUtils securityUtils;
     private final RedisTemplate<String, Object> redisTemplate;
+
+    /** Upper bound on search page size to protect the DB from unbounded result sets. */
+    private static final int MAX_SEARCH_PAGE_SIZE = 100;
 
     @Override
     @Transactional
@@ -63,29 +70,7 @@ public class MessageServiceImpl implements MessageService {
         );
         log.info("event=message_saved message Id={} roomId={} userId={}", savedMessage.getId(), savedMessage.getRoom().getId(), savedMessage.getSender().getId());
 
-        if (room.getType() == RoomType.DM) {
-            String senderUsername = sender.getUsername();
-            String receiverUsername = room.getMembers().stream()
-                    .map(member -> member.getUser())
-                    .filter(user -> !user.getId().equals(sender.getId()))
-                    .map(User::getUsername)
-                    .findFirst()
-                    .orElseThrow();
-
-            var dto = messageMapper.toDto(savedMessage);
-
-            String receiverChannel = "chat.dm.user." + receiverUsername;
-            String senderChannel = "chat.dm.user." + senderUsername;
-            redisTemplate.convertAndSend(receiverChannel, dto);
-            redisTemplate.convertAndSend(senderChannel, dto);
-            log.info("event=dm_message_published messageId={} senderChannel={} receiverChannel={}", savedMessage.getId(), senderChannel, receiverChannel);
-            return;
-        }
-
-        var dto = messageMapper.toDto(savedMessage);
-        String groupChannel = "chat.group." + roomId;
-        redisTemplate.convertAndSend(groupChannel, dto);
-        log.info("event=group_message_published messageId={} channel={} userId={}", savedMessage.getId(), groupChannel, dto.getSenderId());
+        publishMessage(room, sender, savedMessage);
     }
 
     @Override
@@ -99,7 +84,7 @@ public class MessageServiceImpl implements MessageService {
             throw new BadRequestException("Image or video file is required.");
         }
 
-        MessageType messageType = resolveMessageType(file.getContentType());
+        MessageType messageType = resolveMessageType(file);
         log.debug("event=media_type_resolved roomId={} messageType={}", roomId, messageType);
 
         Room room = getAuthorizedRoom(roomId, principal);
@@ -117,7 +102,7 @@ public class MessageServiceImpl implements MessageService {
             log.info("event=media_uploaded roomId={} userId={} mediaKey={}", roomId, sender.getId(), mediaKey);
         } catch (Exception e) {
             log.error("event=media_upload_failed roomId={} userId={} folder={} error={}", roomId, sender.getId(), folder, e.getMessage(), e);
-            throw new RuntimeException("Failed to upload media file", e);
+            throw new FileStorageException("Failed to upload media file", e);
         }
 
         Message savedMessage;
@@ -130,33 +115,46 @@ public class MessageServiceImpl implements MessageService {
             throw e;
         }
 
-        MessageDto messageDto = messageMapper.toDto(savedMessage);
+        return publishMessage(room, sender, savedMessage);
+    }
+
+    /**
+     * Fan a saved message out over Redis pub/sub. For a DM it is delivered to both
+     * participants' personal channels; for a group it goes to the room channel.
+     *
+     * @return the DTO that was published
+     */
+    private MessageDto publishMessage(Room room, User sender, Message savedMessage) {
+        MessageDto dto = messageMapper.toDto(savedMessage);
 
         if (room.getType() == RoomType.DM) {
             String senderUsername = sender.getUsername();
             String receiverUsername = room.getMembers().stream()
-                    .map(member -> member.getUser())
+                    .map(RoomMember::getUser)
                     .filter(user -> !user.getId().equals(sender.getId()))
                     .map(User::getUsername)
                     .findFirst()
-                    .orElseThrow();
+                    .orElseThrow(() -> new ResourceNotFoundException("DM recipient not found in room " + room.getId()));
 
-            redisTemplate.convertAndSend("chat.dm.user." + receiverUsername, messageDto);
-            redisTemplate.convertAndSend("chat.dm.user." + senderUsername, messageDto);
-            log.info("event=dm_media_message_published messageId={} senderUsername={} receiverUsername={}", savedMessage.getId(), senderUsername, receiverUsername);
+            String receiverChannel = "chat.dm.user." + receiverUsername;
+            String senderChannel = "chat.dm.user." + senderUsername;
+            redisTemplate.convertAndSend(receiverChannel, dto);
+            redisTemplate.convertAndSend(senderChannel, dto);
+            log.info("event=dm_message_published messageId={} senderChannel={} receiverChannel={}", savedMessage.getId(), senderChannel, receiverChannel);
         } else {
-            String groupChannel = "chat.group." + roomId;
-            redisTemplate.convertAndSend(groupChannel, messageDto);
-            log.info("event=group_media_message_published messageId={} channel={} userId={}", savedMessage.getId(), groupChannel, sender.getId());
+            String groupChannel = "chat.group." + room.getId();
+            redisTemplate.convertAndSend(groupChannel, dto);
+            log.info("event=group_message_published messageId={} channel={} userId={}", savedMessage.getId(), groupChannel, dto.getSenderId());
         }
-        return messageDto;
+        return dto;
     }
 
     @Override
-    public List<MessageDto> searchMessagesInRoom(Long roomId, String searchText, Principal principal) {
+    @Transactional(readOnly = true)
+    public List<MessageDto> searchMessagesInRoom(Long roomId, String searchText, Pageable pageable, Principal principal) {
         log.debug("event=search_messages_in_room roomId={} user={} query=\"{}\"", roomId, principal.getName(), searchText);
         getAuthorizedRoom(roomId, principal);
-        List<MessageDto> results = messageRepository.fullTextSearchByRoom(roomId, searchText)
+        List<MessageDto> results = messageRepository.fullTextSearchByRoom(roomId, searchText, capPageSize(pageable))
                 .stream()
                 .map(messageMapper::toDto)
                 .toList();
@@ -165,15 +163,24 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public List<MessageDto> searchMessagesAcrossRooms(Principal principal, String searchText) {
+    @Transactional(readOnly = true)
+    public List<MessageDto> searchMessagesAcrossRooms(Principal principal, String searchText, Pageable pageable) {
         User user = getSender(principal);
         log.debug("event=search_messages_across_rooms userId={} query=\"{}\"", user.getId(), searchText);
-        List<MessageDto> results = messageRepository.fullTextSearchAcrossRooms(searchText, user.getId())
+        List<MessageDto> results = messageRepository.fullTextSearchAcrossRooms(searchText, user.getId(), capPageSize(pageable))
                 .stream()
                 .map(messageMapper::toDto)
                 .toList();
         log.info("event=search_messages_across_rooms_done userId={} resultCount={}", user.getId(), results.size());
         return results;
+    }
+
+    /** Clamp the requested page size so a client cannot ask for an unbounded result set. */
+    private Pageable capPageSize(Pageable pageable) {
+        if (pageable.getPageSize() <= MAX_SEARCH_PAGE_SIZE) {
+            return pageable;
+        }
+        return org.springframework.data.domain.PageRequest.of(pageable.getPageNumber(), MAX_SEARCH_PAGE_SIZE);
     }
 
 
@@ -209,19 +216,72 @@ public class MessageServiceImpl implements MessageService {
         return securityUtils.getRequestUser(principal);
     }
 
-    private MessageType resolveMessageType(String contentType) {
+    /**
+     * Resolve the message type from the uploaded file. The declared content-type is
+     * client-supplied and easily spoofed, so we also sniff the leading "magic bytes"
+     * and require the actual bytes to agree with an allowed image/video type.
+     */
+    private MessageType resolveMessageType(MultipartFile file) {
+        String contentType = file.getContentType();
         if (contentType == null || contentType.isBlank()) {
             throw new BadRequestException("Unsupported file type.");
         }
 
+        MessageType declaredType;
         if (contentType.startsWith("image/")) {
-            return MessageType.IMAGE;
+            declaredType = MessageType.IMAGE;
+        } else if (contentType.startsWith("video/")) {
+            declaredType = MessageType.VIDEO;
+        } else {
+            throw new BadRequestException("Only image and video files are supported.");
         }
 
-        if (contentType.startsWith("video/")) {
-            return MessageType.VIDEO;
+        MessageType sniffedType = sniffMediaType(file);
+        if (sniffedType == null || sniffedType != declaredType) {
+            log.warn("event=media_type_mismatch declared={} sniffed={} contentType={}", declaredType, sniffedType, contentType);
+            throw new BadRequestException("File content does not match a supported image or video format.");
+        }
+        return declaredType;
+    }
+
+    /** Detect image/video from magic bytes; returns {@code null} if unrecognised. */
+    private MessageType sniffMediaType(MultipartFile file) {
+        byte[] header = new byte[12];
+        try (var in = file.getInputStream()) {
+            int read = in.read(header);
+            if (read < 4) {
+                return null;
+            }
+        } catch (IOException e) {
+            throw new FileStorageException("Could not read uploaded file", e);
         }
 
-        throw new BadRequestException("Only image and video files are supported.");
+        // Images
+        if (startsWith(header, 0xFF, 0xD8, 0xFF)) return MessageType.IMAGE;                       // JPEG
+        if (startsWith(header, 0x89, 0x50, 0x4E, 0x47)) return MessageType.IMAGE;                 // PNG
+        if (startsWith(header, 0x47, 0x49, 0x46, 0x38)) return MessageType.IMAGE;                 // GIF
+        if (startsWith(header, 0x52, 0x49, 0x46, 0x46) && matchesAt(header, 8, 0x57, 0x45, 0x42, 0x50)) return MessageType.IMAGE; // RIFF....WEBP
+
+        // Videos
+        if (matchesAt(header, 4, 0x66, 0x74, 0x79, 0x70)) return MessageType.VIDEO;               // ISO-BMFF (MP4/MOV): '....ftyp'
+        if (startsWith(header, 0x1A, 0x45, 0xDF, 0xA3)) return MessageType.VIDEO;                 // Matroska/WebM (EBML)
+
+        return null;
+    }
+
+    private boolean startsWith(byte[] data, int... expected) {
+        return matchesAt(data, 0, expected);
+    }
+
+    private boolean matchesAt(byte[] data, int offset, int... expected) {
+        if (data.length < offset + expected.length) {
+            return false;
+        }
+        for (int i = 0; i < expected.length; i++) {
+            if ((data[offset + i] & 0xFF) != expected[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 }

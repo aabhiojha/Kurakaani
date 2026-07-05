@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -68,8 +70,9 @@ public class MessageController {
     public ResponseEntity<List<MessageDto>> searchMessagesFromRoom(
             @Parameter(description = "ID of the room to search in") @PathVariable Long roomId,
             @Parameter(description = "Search query text") @RequestParam String text,
+            @PageableDefault(size = 50) Pageable pageable,
             Principal principal) {
-        return ResponseEntity.ok(messageService.searchMessagesInRoom(roomId, text, principal));
+        return ResponseEntity.ok(messageService.searchMessagesInRoom(roomId, text, pageable, principal));
     }
 
     @Operation(summary = "Search messages across all rooms", description = "Full-text search for messages across all rooms the authenticated user belongs to. Messages from rooms the user is not a member of are excluded. Results are ranked by relevance.")
@@ -80,8 +83,9 @@ public class MessageController {
     @GetMapping("/api/rooms/messages/search")
     public ResponseEntity<List<MessageDto>> searchMessagesFromRooms(
             @Parameter(description = "Search query text") @RequestParam String text,
+            @PageableDefault(size = 50) Pageable pageable,
             Principal principal) {
-        return ResponseEntity.ok(messageService.searchMessagesAcrossRooms(principal, text));
+        return ResponseEntity.ok(messageService.searchMessagesAcrossRooms(principal, text, pageable));
     }
 
 }
