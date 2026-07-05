@@ -49,12 +49,7 @@ public class SecurityUtils {
                 .or(() -> userRepository.findByEmailIgnoreCase(principalName))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
-        if (user == null) {
-            log.warn("No AppUser found for authenticated principal={}", principalName);
-        } else {
-            log.debug("Resolved request user: id={}, username={}, email={}",
-                    user.getId(), user.getUsername(), user.getEmail());
-        }
+        log.debug("Resolved request user: id={} username={}", user.getId(), user.getUsername());
         return user;
     }
 }

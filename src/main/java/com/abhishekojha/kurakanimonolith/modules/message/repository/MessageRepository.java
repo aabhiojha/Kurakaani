@@ -1,6 +1,7 @@
 package com.abhishekojha.kurakanimonolith.modules.message.repository;
 
 import com.abhishekojha.kurakanimonolith.modules.message.model.Message;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -34,7 +35,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
               similarity(coalesce(content, ''), :searchText) DESC,
               created_at DESC
             """, nativeQuery = true)
-    List<Message> fullTextSearchByRoom(@Param("roomId") Long roomId, @Param("searchText") String searchText);
+    List<Message> fullTextSearchByRoom(@Param("roomId") Long roomId, @Param("searchText") String searchText, Pageable pageable);
 
 
     //    @Query(value = """
@@ -64,5 +65,5 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
               similarity(coalesce(m.content, ''), :searchText) DESC,
               m.created_at DESC
             """, nativeQuery = true)
-    List<Message> fullTextSearchAcrossRooms(@Param("searchText") String searchText, @Param("userId") Long userId);
+    List<Message> fullTextSearchAcrossRooms(@Param("searchText") String searchText, @Param("userId") Long userId, Pageable pageable);
 }

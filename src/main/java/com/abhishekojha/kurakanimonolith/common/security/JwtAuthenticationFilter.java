@@ -25,6 +25,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final TokenDenylistService tokenDenylistService;
 
     @Override
     protected void doFilterInternal(
@@ -50,6 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // username passed in the token
             userName = jwtService.extractUsername(jwt);
             log.debug("Username extracted from the jwt: {}", userName);
+
+            // Reject tokens that have been revoked via logout.
+            if (tokenDenylistService.isDenylisted(jwtService.extractJti(jwt))) {
+                log.debug("Rejected revoked (denylisted) JWT for user={}", userName);
+                filterChain.doFilter(request, response);
+                return;
+            }
         } catch (JwtException | IllegalArgumentException exception) {
             log.debug("Invalid JWT received: {}", exception.getMessage());
             filterChain.doFilter(request, response);
@@ -58,11 +66,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userName);
-            log.debug("User details object obtained: {}", userDetails.toString());
 
             if (jwtService.isTokenValid(jwt, userDetails)) {
                 // Create authentication token
-                log.debug("JWT token is valid");
+                log.debug("JWT token is valid for user={}", userName);
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
@@ -70,14 +77,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         userDetails.getAuthorities()
                 );
 
-                log.debug("authToken object created: {}", authToken);
-
                 // Attach request details
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 // set the authentication in the security context
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-                log.debug("The Security context holder populated with authToken");
+                log.debug("Security context populated for user={}", userName);
             }
         }
         // Continue the filter chain

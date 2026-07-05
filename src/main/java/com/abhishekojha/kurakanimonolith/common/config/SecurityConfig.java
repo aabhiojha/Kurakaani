@@ -2,6 +2,7 @@ package com.abhishekojha.kurakanimonolith.common.config;
 
 import com.abhishekojha.kurakanimonolith.common.security.AccessDeniedHandlerJwt;
 import com.abhishekojha.kurakanimonolith.common.security.AuthEntryPointJwt;
+import com.abhishekojha.kurakanimonolith.common.security.AuthRateLimitFilter;
 import com.abhishekojha.kurakanimonolith.common.security.JwtAuthenticationFilter;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Slf4j
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final AuthRateLimitFilter authRateLimitFilter = new AuthRateLimitFilter();
     private final UserDetailsService userDetailsService;
     private final AuthEntryPointJwt unauthorizedHandler;
     private final AccessDeniedHandlerJwt accessDeniedHandler;
@@ -53,6 +55,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/", "/error").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/docs", "/docs/**").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/api/auth/**", "/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -79,7 +82,9 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
 
                 // Add JWT filter before the standard authentication filter
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                // Rate-limit auth endpoints ahead of any authentication work
+                .addFilterBefore(authRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

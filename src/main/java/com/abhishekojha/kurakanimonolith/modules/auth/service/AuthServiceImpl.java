@@ -1,5 +1,6 @@
 package com.abhishekojha.kurakanimonolith.modules.auth.service;
 
+import com.abhishekojha.kurakanimonolith.common.exception.exceptions.DuplicateResourceException;
 import com.abhishekojha.kurakanimonolith.common.helpers.RandomNumbers;
 import com.abhishekojha.kurakanimonolith.common.security.JwtService;
 import com.abhishekojha.kurakanimonolith.common.security.SecurityUtils;
@@ -45,13 +46,18 @@ public class AuthServiceImpl implements AuthService {
     private final SecurityUtils securityUtils;
 
     @Override
-    @Async
-    public void register(RegisterRequest request) {
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
         log.debug("event=register_attempt username={}", request.getUsername());
 
         if (userRepository.existsByUserName(request.getUsername())) {
             log.warn("event=register_rejected reason=username_taken username={}", request.getUsername());
-            throw new IllegalArgumentException("Username already exists");
+            throw new DuplicateResourceException("Username already exists");
+        }
+
+        if (request.getEmail() != null && userRepository.findByEmailIgnoreCase(request.getEmail()).isPresent()) {
+            log.warn("event=register_rejected reason=email_taken");
+            throw new DuplicateResourceException("Email already registered");
         }
 
         // Create new user with encoded password
@@ -75,7 +81,7 @@ public class AuthServiceImpl implements AuthService {
         List<String> roles = user.getRoles().stream().map(Role::getName).toList();
         publisher.publishEvent(new UserRegisteredEvent(user));
         log.debug("event=user_registered_event_published userId={}", user.getId());
-        new AuthResponse(jwt, user.getUsername(), roles);
+        return new AuthResponse(jwt, user.getUsername(), roles);
     }
 
     public AuthResponse authenticate(AuthRequest request) {
