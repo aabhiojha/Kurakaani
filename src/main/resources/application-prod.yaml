@@ -3,16 +3,24 @@ spring:
     name: kurakani-monolith
 
   datasource:
-    username: postgres
-    password: postgres
-    url: jdbc:postgresql://localhost:5432/chat-app-db
+    # All credentials are required in prod - the app must fail fast if they are missing
+    # rather than silently falling back to well-known values.
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    url: ${DB_URL}
     driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-    show-sql: true
+    show-sql: false
 
   servlet:
     multipart:
@@ -24,10 +32,10 @@ spring:
     baseline-on-migrate: true
 
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME:aojha6822@gmail.com}
-    password: ${MAIL_PASSWORD:randomasspassword}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -35,12 +43,10 @@ spring:
           starttls:
             enable: true
 
-
 logging:
   level:
-    root: off
-#    org.springframework.security: DEBUG
-#    root: info
+    root: info
+    com.abhishekojha.kurakanimonolith: info
 
 springdoc:
   api-docs:
@@ -50,14 +56,16 @@ springdoc:
     display-request-duration: true
 
 storage:
-  endpoint: ${STORAGE_ENDPOINT:http://127.0.0.1:9000}
-  access-key: ${STORAGE_ACCESS_KEY:rustfsadmin}
-  secret-key: ${STORAGE_SECRET_KEY:rustfsadmin}
-  bucket: ${STORAGE_BUCKET:kurakaani}
-  region: ${STORAGE_REGION:rustfs}
+  endpoint: ${STORAGE_ENDPOINT}
+  access-key: ${STORAGE_ACCESS_KEY}
+  secret-key: ${STORAGE_SECRET_KEY}
+  bucket: ${STORAGE_BUCKET}
+  region: ${STORAGE_REGION}
 
 app:
   jwt:
-    secret: ${JWT_SECRET:TOYLwSbD3s8U0SmuFuVSBWJDa0dlyoXbjSDmDgEXnEN}
+    # No default: a missing secret must stop startup, never fall back to a committed key.
+    secret: ${JWT_SECRET}
     expiration-seconds: ${JWT_EXPIRATION_SECONDS:864000}
-
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
