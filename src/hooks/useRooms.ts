@@ -203,7 +203,7 @@ export function useRooms(
 
 	const touchConversation = useCallback((
 		roomId: number,
-		updates: { preview?: string; time?: string; unreadDelta?: number },
+		updates: { preview?: string; time?: string; unreadDelta?: number; senderName?: string },
 	) => {
 		setConversationsState((prev) => {
 			const updateList = (conversations: Conversation[]) => {
@@ -214,9 +214,14 @@ export function useRooms(
 
 				const current = conversations[index]
 				const nextUnreadCount = Math.max(0, (current.unreadCount ?? 0) + (updates.unreadDelta ?? 0))
+				const rawPreview = updates.preview ?? current.preview
+				const nextPreview = (current.isGroup && updates.senderName && updates.preview)
+					? `${updates.senderName}: ${updates.preview}`
+					: rawPreview
+
 				const nextConversation: Conversation = {
 					...current,
-					preview: updates.preview ?? current.preview,
+					preview: nextPreview,
 					time: updates.time ?? current.time,
 					unreadCount: nextUnreadCount,
 				}

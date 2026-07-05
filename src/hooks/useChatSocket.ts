@@ -27,7 +27,7 @@ interface UseChatSocketParams {
 	onNotification: (event: NotificationEvent, currentUserId: number) => void
 	onConversationActivity?: (
 		conversationId: number,
-		updates: { preview: string; time: string; unreadDelta?: number },
+		updates: { preview: string; time: string; unreadDelta?: number; senderName?: string },
 	) => void
 	setBackendStatus: (status: string) => void
 }
@@ -213,6 +213,7 @@ export function useChatSocket({
 				preview: messagePreview,
 				time: timestamp,
 				unreadDelta: !fromCurrentUser && !isActiveConversation ? 1 : 0,
+				senderName: resolvedMessage.senderName,
 			})
 
 			if (fromCurrentUser && hasOptimisticMatch) {

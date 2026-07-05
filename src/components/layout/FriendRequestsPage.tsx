@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { UserPlus } from 'lucide-react'
+import { UserPlus, UserCheck, UserMinus, Clock } from 'lucide-react'
 import type { FriendshipResponse } from '../../types/api/friend'
-import { Button, Card } from '../ui'
+import { Button } from '../ui'
 
 type FriendRequestsPageProps = {
 	friendships: {
@@ -14,6 +14,16 @@ type FriendRequestsPageProps = {
 	onCancelFriendRequest: (userId: number) => Promise<void>
 }
 
+const getAvatarLabel = (name?: string) => {
+	const value = (name ?? '')
+		.split(' ')
+		.map((part) => part[0]?.toUpperCase())
+		.filter(Boolean)
+		.slice(0, 2)
+		.join('')
+	return value || 'KU'
+}
+
 export function FriendRequestsPage({
 	friendships,
 	friendshipStatus,
@@ -22,110 +32,169 @@ export function FriendRequestsPage({
 	onCancelFriendRequest,
 }: FriendRequestsPageProps) {
 	const [actionError, setActionError] = useState<string | null>(null)
-	const [actionLoading, setActionLoading] = useState(false)
+	const [actionLoadingId, setActionLoadingId] = useState<number | null>(null)
 
-	const runAction = async (action: () => Promise<void>) => {
+	const runAction = async (userId: number, action: () => Promise<void>) => {
 		setActionError(null)
-		setActionLoading(true)
+		setActionLoadingId(userId)
 		try {
 			await action()
 		} catch (error) {
 			setActionError(error instanceof Error ? error.message : 'Request action failed.')
 		} finally {
-			setActionLoading(false)
+			setActionLoadingId(null)
 		}
 	}
 
 	return (
-		<section className="motion-enter flex min-w-0 flex-1 overflow-y-auto bg-md-surface-container-low p-3 sm:p-4 lg:p-6">
-			<Card className="mx-auto w-full max-w-5xl p-5 sm:p-6">
-				<div className="mb-6 border-b border-md-outline-variant pb-4">
-					<p className="text-xs font-medium uppercase tracking-[0.12em] text-md-primary">Friendships</p>
-					<h2 className="mt-1 text-2xl font-medium tracking-tight text-md-on-surface">Friend requests</h2>
-					<p className="mt-1 text-sm text-md-on-surface-variant">Manage incoming and sent friend requests.</p>
+		<section className="motion-enter flex min-w-0 flex-1 flex-col overflow-y-auto bg-md-surface p-4 sm:p-6 lg:p-10">
+			<div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+				{/* Header */}
+				<div className="flex flex-col gap-2 border-b border-md-outline-variant pb-6">
+					<div className="flex items-center gap-3">
+						<div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-md-primary-container text-md-on-primary-container">
+							<UserPlus size={24} />
+						</div>
+						<div>
+							<h1 className="text-3xl font-bold tracking-tight text-md-on-surface">Friend Requests</h1>
+							<p className="text-sm text-md-on-surface-variant mt-1">Manage your pending connections and outgoing invites.</p>
+						</div>
+					</div>
+					{actionError && (
+						<div className="motion-enter-soft mt-4 rounded-xl bg-md-error-container p-3 text-sm font-medium text-md-on-error-container">
+							{actionError}
+						</div>
+					)}
+					{friendshipStatus && (
+						<div className="motion-enter-soft mt-4 rounded-xl bg-md-secondary-container p-3 text-sm font-medium text-md-on-secondary-container">
+							{friendshipStatus}
+						</div>
+					)}
 				</div>
 
-				{actionError && <p className="mb-4 text-sm text-md-error">{actionError}</p>}
-				{friendshipStatus && <p className="mb-4 text-sm text-md-on-surface-variant">{friendshipStatus}</p>}
-
-				<div className="grid gap-4 xl:grid-cols-2">
-					<div className="rounded-md3-md bg-md-surface-container-high p-4">
-						<div className="mb-3 flex items-center justify-between">
-							<h3 className="text-sm font-medium text-md-on-surface">Incoming</h3>
-							<span className="rounded-full bg-md-secondary-container px-2.5 py-0.5 text-xs font-medium text-md-on-secondary-container">
-								{friendships.incoming.length}
+				<div className="grid gap-8 lg:grid-cols-2">
+					{/* Incoming Requests */}
+					<div className="flex flex-col gap-4">
+						<div className="flex items-center justify-between">
+							<h2 className="text-xl font-semibold text-md-on-surface">Incoming</h2>
+							<span className="flex h-6 items-center justify-center rounded-full bg-md-primary px-3 text-xs font-medium text-md-on-primary">
+								{friendships.incoming.length} pending
 							</span>
 						</div>
-						<div className="space-y-3">
-							{friendships.incoming.map((friendship) => (
-								<div key={friendship.id} className="rounded-md3-sm bg-md-surface p-3">
-									<p className="text-sm font-medium text-md-on-surface">
-										From {friendship.requesterName ?? `User #${friendship.requesterId}`}
-									</p>
-									<p className="mt-1 text-xs text-md-outline">Pending request</p>
-									<div className="mt-3 flex gap-2">
-										<Button
-											size="sm"
-											onClick={() => void runAction(() => onRespondToFriendRequest(friendship.requesterId, 'ACCEPT'))}
-											disabled={actionLoading}
-										>
-											Accept
-										</Button>
-										<Button
-											size="sm"
-											variant="outlined"
-											onClick={() => void runAction(() => onRespondToFriendRequest(friendship.requesterId, 'REJECT'))}
-											disabled={actionLoading}
-										>
-											Reject
-										</Button>
-									</div>
+						
+						<div className="flex flex-col gap-3">
+							{isFriendshipsLoading ? (
+								<div className="flex items-center justify-center rounded-3xl bg-md-surface-container-low p-8">
+									<p className="text-sm font-medium text-md-on-surface-variant">Loading requests…</p>
 								</div>
-							))}
-							{isFriendshipsLoading && <p className="text-sm text-md-on-surface-variant">Loading incoming requests…</p>}
-							{!isFriendshipsLoading && friendships.incoming.length === 0 && (
-								<p className="text-sm text-md-on-surface-variant">No incoming requests.</p>
+							) : friendships.incoming.length === 0 ? (
+								<div className="flex flex-col items-center justify-center rounded-3xl bg-md-surface-container-low p-10 text-center">
+									<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-md-surface text-md-outline">
+										<UserCheck size={32} />
+									</div>
+									<p className="text-base font-semibold text-md-on-surface">You're all caught up!</p>
+									<p className="mt-1 text-sm text-md-on-surface-variant">No pending friend requests.</p>
+								</div>
+							) : (
+								friendships.incoming.map((friendship) => {
+									const displayName = friendship.requesterName ?? `User #${friendship.requesterId}`
+									const avatarLabel = getAvatarLabel(displayName)
+									const isLoading = actionLoadingId === friendship.requesterId
+									return (
+										<div key={friendship.id} className="group flex items-center justify-between gap-4 rounded-3xl bg-md-surface-container-low p-4 shadow-sm transition-all hover:bg-md-surface-container hover:shadow-md">
+											<div className="flex min-w-0 flex-1 items-center gap-4">
+												<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-md-primary to-md-tertiary text-sm font-bold text-white shadow-sm">
+													{avatarLabel}
+												</div>
+												<div className="min-w-0">
+													<p className="truncate text-base font-semibold text-md-on-surface">{displayName}</p>
+													<p className="truncate text-xs text-md-on-surface-variant">Wants to connect with you</p>
+												</div>
+											</div>
+											<div className="flex shrink-0 items-center gap-2">
+												<Button
+													size="sm"
+													onClick={() => void runAction(friendship.requesterId, () => onRespondToFriendRequest(friendship.requesterId, 'ACCEPT'))}
+													disabled={isLoading}
+													className="bg-md-primary hover:bg-md-primary/90"
+												>
+													Accept
+												</Button>
+												<Button
+													size="sm"
+													variant="outlined"
+													onClick={() => void runAction(friendship.requesterId, () => onRespondToFriendRequest(friendship.requesterId, 'REJECT'))}
+													disabled={isLoading}
+													className="text-md-error hover:bg-md-error-container hover:text-md-on-error-container"
+												>
+													Decline
+												</Button>
+											</div>
+										</div>
+									)
+								})
 							)}
 						</div>
 					</div>
 
-					<div className="rounded-md3-md bg-md-surface-container-high p-4">
-						<div className="mb-3 flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<UserPlus size={16} className="text-md-on-surface-variant" />
-								<h3 className="text-sm font-medium text-md-on-surface">Sent</h3>
-							</div>
-							<span className="rounded-full bg-md-secondary-container px-2.5 py-0.5 text-xs font-medium text-md-on-secondary-container">
-								{friendships.sent.length}
+					{/* Sent Requests */}
+					<div className="flex flex-col gap-4">
+						<div className="flex items-center justify-between">
+							<h2 className="text-xl font-semibold text-md-on-surface">Sent</h2>
+							<span className="flex h-6 items-center justify-center rounded-full bg-md-secondary-container px-3 text-xs font-medium text-md-on-secondary-container">
+								{friendships.sent.length} sent
 							</span>
 						</div>
-						<div className="space-y-3">
-							{friendships.sent.map((friendship) => (
-								<div key={friendship.id} className="rounded-md3-sm bg-md-surface p-3">
-									<p className="text-sm font-medium text-md-on-surface">
-										To {friendship.recipientName ?? `User #${friendship.recipientId}`}
-									</p>
-									<p className="mt-1 text-xs text-md-outline">Awaiting response</p>
-									<div className="mt-3">
-										<Button
-											size="sm"
-											variant="outlined"
-											onClick={() => void runAction(() => onCancelFriendRequest(friendship.recipientId))}
-											disabled={actionLoading}
-										>
-											Cancel
-										</Button>
-									</div>
+
+						<div className="flex flex-col gap-3">
+							{isFriendshipsLoading ? (
+								<div className="flex items-center justify-center rounded-3xl bg-md-surface-container-low p-8">
+									<p className="text-sm font-medium text-md-on-surface-variant">Loading requests…</p>
 								</div>
-							))}
-							{isFriendshipsLoading && <p className="text-sm text-md-on-surface-variant">Loading sent requests…</p>}
-							{!isFriendshipsLoading && friendships.sent.length === 0 && (
-								<p className="text-sm text-md-on-surface-variant">No sent requests.</p>
+							) : friendships.sent.length === 0 ? (
+								<div className="flex flex-col items-center justify-center rounded-3xl bg-md-surface-container-low p-10 text-center">
+									<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-md-surface text-md-outline">
+										<UserMinus size={32} />
+									</div>
+									<p className="text-base font-semibold text-md-on-surface">No sent requests</p>
+									<p className="mt-1 text-sm text-md-on-surface-variant">You haven't sent any friend requests recently.</p>
+								</div>
+							) : (
+								friendships.sent.map((friendship) => {
+									const displayName = friendship.recipientName ?? `User #${friendship.recipientId}`
+									const avatarLabel = getAvatarLabel(displayName)
+									const isLoading = actionLoadingId === friendship.recipientId
+									return (
+										<div key={friendship.id} className="group flex items-center justify-between gap-4 rounded-3xl bg-md-surface-container-low p-4 shadow-sm transition-all hover:bg-md-surface-container hover:shadow-md">
+											<div className="flex min-w-0 flex-1 items-center gap-4">
+												<div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-md-surface-variant text-sm font-bold text-md-on-surface-variant">
+													{avatarLabel}
+												</div>
+												<div className="min-w-0">
+													<p className="truncate text-base font-semibold text-md-on-surface">{displayName}</p>
+													<div className="flex items-center gap-1.5 text-xs text-md-on-surface-variant">
+														<Clock size={12} />
+														<span>Awaiting response</span>
+													</div>
+												</div>
+											</div>
+											<Button
+												size="sm"
+												variant="outlined"
+												onClick={() => void runAction(friendship.recipientId, () => onCancelFriendRequest(friendship.recipientId))}
+												disabled={isLoading}
+												className="shrink-0 text-md-on-surface-variant hover:bg-md-surface-variant hover:text-md-on-surface"
+											>
+												Cancel
+											</Button>
+										</div>
+									)
+								})
 							)}
 						</div>
 					</div>
 				</div>
-			</Card>
+			</div>
 		</section>
 	)
 }
