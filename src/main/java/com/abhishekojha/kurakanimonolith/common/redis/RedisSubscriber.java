@@ -57,6 +57,14 @@ public class RedisSubscriber implements MessageListener {
             return;
         }
 
+        // Reactions
+        if (channel.startsWith("chat.reaction.")) {
+            String roomId = extractLastSegment(channel);
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/reaction", payload);
+            log.debug("event=reaction_event_forwarded roomId={}", roomId);
+            return;
+        }
+
         // Notifications
         if (channel.startsWith("notification.")) {
             String username = extractLastSegment(channel);

@@ -18,6 +18,10 @@ import com.abhishekojha.kurakanimonolith.modules.room.repository.RoomRepository;
 import com.abhishekojha.kurakanimonolith.modules.room_member.model.RoomMember;
 import com.abhishekojha.kurakanimonolith.modules.room_member.repository.RoomMemberRepository;
 import com.abhishekojha.kurakanimonolith.modules.user.model.User;
+import com.abhishekojha.kurakanimonolith.modules.message.repository.MessageReactionRepository;
+import com.abhishekojha.kurakanimonolith.modules.message.model.MessageReaction;
+import com.abhishekojha.kurakanimonolith.modules.message.dto.ReactionRequest;
+import com.abhishekojha.kurakanimonolith.modules.room.dto.roomMessage.ReactionDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +46,7 @@ public class MessageServiceImpl implements MessageService {
     private final S3Operations s3Operations;
     private final SecurityUtils securityUtils;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final MessageReactionRepository messageReactionRepository;
 
     /** Upper bound on search page size to protect the DB from unbounded result sets. */
     private static final int MAX_SEARCH_PAGE_SIZE = 100;
@@ -199,17 +204,57 @@ public class MessageServiceImpl implements MessageService {
     }
 
     /** Loads the room and verifies the already-resolved user is a member (no extra user lookup). */
-    private Room getAuthorizedRoom(Long roomId, User sender) {
-        Room room = roomRepository.findById(roomId).orElseThrow(
-                () -> new ResourceNotFoundException("Room not found")
-        );
+    private Room getAuthorizedRoom(Long roomId, User user) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found."));
 
-        boolean isMember = roomMemberRepository.existsByRoomIdAndUserId(roomId, sender.getId());
+        boolean isMember = roomMemberRepository.findByRoomId(roomId).stream()
+                .anyMatch(member -> member.getUser().getId().equals(user.getId()));
+
         if (!isMember) {
-            log.warn("event=unauthorized_room_access roomId={} userId={}", roomId, sender.getId());
-            throw new UnauthorizedException("You are not a member of this room");
+            throw new UnauthorizedException("You are not a member of this room.");
         }
+
         return room;
+    }
+
+    @Override
+    @Transactional
+    public void handleReaction(Long roomId, ReactionRequest request, Principal principal) {
+        User sender = getSender(principal);
+        getAuthorizedRoom(roomId, sender);
+
+        Message message = messageRepository.findById(request.getMessageId())
+                .orElseThrow(() -> new ResourceNotFoundException("Message not found."));
+
+        if (!message.getRoom().getId().equals(roomId)) {
+            throw new BadRequestException("Message does not belong to this room.");
+        }
+
+        if (request.getEmoji() == null || request.getEmoji().isBlank()) {
+            messageReactionRepository.findByMessageIdAndUserId(message.getId(), sender.getId())
+                    .ifPresent(messageReactionRepository::delete);
+        } else {
+            MessageReaction reaction = messageReactionRepository.findByMessageIdAndUserId(message.getId(), sender.getId())
+                    .orElseGet(() -> MessageReaction.builder()
+                            .message(message)
+                            .user(sender)
+                            .build());
+            reaction.setEmoji(request.getEmoji());
+            messageReactionRepository.save(reaction);
+        }
+
+        ReactionDto reactionDto = new ReactionDto(request.getEmoji() != null ? request.getEmoji() : "", sender.getId(), sender.getUsername());
+        
+        // Broadcast the reaction update to the room
+        // The frontend will receive this and update the message locally
+        // We'll wrap it in a custom map or just send the reaction payload
+        redisTemplate.convertAndSend("chat.reaction." + roomId, java.util.Map.of(
+            "messageId", request.getMessageId(),
+            "emoji", request.getEmoji() != null ? request.getEmoji() : "",
+            "userId", sender.getId(),
+            "userName", sender.getUsername()
+        ));
     }
 
     private User getSender(Principal principal) {

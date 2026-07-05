@@ -24,6 +24,9 @@ import com.abhishekojha.kurakanimonolith.modules.room_member.model.RoomRole;
 import com.abhishekojha.kurakanimonolith.modules.room_member.repository.RoomMemberRepository;
 import com.abhishekojha.kurakanimonolith.modules.user.model.User;
 import com.abhishekojha.kurakanimonolith.modules.user.repository.UserRepository;
+import com.abhishekojha.kurakanimonolith.modules.message.repository.MessageReactionRepository;
+import com.abhishekojha.kurakanimonolith.modules.message.model.MessageReaction;
+import com.abhishekojha.kurakanimonolith.modules.room.dto.roomMessage.ReactionDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +50,7 @@ public class RoomServiceImpl implements RoomService {
     private final RoomMemberMapper roomMemberMapper;
     private final S3Operations s3Operations;
     private final FriendRequestService friendRequestService;
+    private final MessageReactionRepository messageReactionRepository;
 
     @Override
     @Transactional
@@ -205,7 +209,7 @@ public class RoomServiceImpl implements RoomService {
                                     .roomRole(u.getId().equals(user.getId()) ? RoomRole.ADMIN : RoomRole.MEMBER)
                                     .joinedAt(LocalDateTime.now())
                                     .build())
-                    .toList();
+                    .collect(Collectors.toList());
             roomMemberRepository.saveAll(allRoomMembers);
 
             savedRoom.setMembers(allRoomMembers);
@@ -279,8 +283,22 @@ public class RoomServiceImpl implements RoomService {
     @Override
     public List<RoomMessageDto> getAllMessagesForRoom(Long roomId) {
         log.debug("event=get_messages_for_room_attempt roomId={}", roomId);
-        // ill have to write a custom repo method for getting data in roommessagedto
-        return roomRepository.getMessagesForRoom(roomId).stream()
+        
+        List<RoomMessageDto> messages = roomRepository.getMessagesForRoom(roomId);
+        if (messages.isEmpty()) {
+            return messages;
+        }
+        
+        List<Long> messageIds = messages.stream().map(RoomMessageDto::getId).collect(Collectors.toList());
+        List<MessageReaction> reactions = messageReactionRepository.findByMessageIdIn(messageIds);
+        
+        Map<Long, List<ReactionDto>> reactionsByMessage = reactions.stream()
+            .collect(Collectors.groupingBy(
+                r -> r.getMessage().getId(),
+                Collectors.mapping(r -> new ReactionDto(r.getEmoji(), r.getUser().getId(), r.getUser().getUsername()), Collectors.toList())
+            ));
+            
+        return messages.stream()
                 .peek(message -> {
                     if (message.getUserInfo() != null) {
                         message.getUserInfo().setProfileImageUrl(
@@ -288,8 +306,9 @@ public class RoomServiceImpl implements RoomService {
                         );
                     }
                     message.setMediaUrl(s3Operations.getMediaAccessUrl(message.getMediaUrl()));
+                    message.setReactions(reactionsByMessage.getOrDefault(message.getId(), new ArrayList<>()));
                 })
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override

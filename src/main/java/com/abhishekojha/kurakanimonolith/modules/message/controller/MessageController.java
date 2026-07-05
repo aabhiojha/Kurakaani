@@ -3,6 +3,7 @@ package com.abhishekojha.kurakanimonolith.modules.message.controller;
 import com.abhishekojha.kurakanimonolith.modules.message.TypingEvent;
 import com.abhishekojha.kurakanimonolith.modules.message.dto.MessageDto;
 import com.abhishekojha.kurakanimonolith.modules.message.dto.MessageRequest;
+import com.abhishekojha.kurakanimonolith.modules.message.dto.ReactionRequest;
 import com.abhishekojha.kurakanimonolith.modules.message.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -57,6 +58,15 @@ public class MessageController {
                              @Payload TypingEvent event,
                              Principal principal) {
         redisTemplate.convertAndSend("chat.typing." + roomId, event);
+    }
+
+    @MessageMapping("/chat.reaction/{roomId}")
+    public void handleReaction(
+            @DestinationVariable Long roomId,
+            @Payload ReactionRequest request,
+            Principal principal
+    ) {
+        messageService.handleReaction(roomId, request, principal);
     }
 
     @Operation(summary = "Search messages in a room", description = "Full-text search for messages within a specific room. Only accessible to members of that room. Results are ranked by relevance.")

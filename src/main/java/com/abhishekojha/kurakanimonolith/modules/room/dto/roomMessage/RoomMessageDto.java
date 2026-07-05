@@ -23,6 +23,7 @@ public class RoomMessageDto {
     private Boolean isDeleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private java.util.List<ReactionDto> reactions = new java.util.ArrayList<>();
 
     public RoomMessageDto(Long id, Long roomId, String content, MessageType messageType, String mediaUrl, String mediaContentType, String mediaFileName, Boolean isEdited, Boolean isDeleted, LocalDateTime createdAt, LocalDateTime updatedAt, Long userId, String username, String profileImageUrl) {
         this.id = id;

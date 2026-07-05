@@ -26,4 +26,6 @@ public interface MessageService {
     List<MessageDto> searchMessagesInRoom(Long roomId, String searchText, Pageable pageable, Principal principal);
 
     List<MessageDto> searchMessagesAcrossRooms(Principal principal, String searchText, Pageable pageable);
+
+    void handleReaction(Long roomId, com.abhishekojha.kurakanimonolith.modules.message.dto.ReactionRequest request, Principal principal);
 }

@@ -32,6 +32,8 @@ public class RedisConfig {
         container.addMessageListener(listenerAdapter, new PatternTopic("chat.dm.*"));
         // Typing events
         container.addMessageListener(listenerAdapter, new PatternTopic("chat.typing.*"));
+        // Reactions
+        container.addMessageListener(listenerAdapter, new PatternTopic("chat.reaction.*"));
         // Friend requests
         container.addMessageListener(listenerAdapter, new PatternTopic("friend.request.*"));
         // Notifications
