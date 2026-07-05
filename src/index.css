@@ -1,144 +1,351 @@
 @import "tailwindcss";
 
+/* Roboto is loaded via a preconnected <link> in index.html for faster first paint. */
+
+/* ============================================================================
+   Material Design 3 tonal system — seed #6750A4 (Material You baseline purple).
+   Raw system tokens live on :root / [data-theme='dark']; Tailwind utilities are
+   mapped from them via `@theme inline` below so a single [data-theme] swap
+   re-themes every `md-*` utility at runtime with no rebuild.
+   ============================================================================ */
+
 :root {
+	color-scheme: light;
+
+	/* Motion */
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1); /* MD3 emphasized-decelerate */
 	--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 	--ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 	--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 	--dur-instant: 140ms;
 	--dur-state: 240ms;
 	--dur-enter: 420ms;
-	--bg-page: #0c0c0c;
-	--bg-surface: #f0f4f8;
-	--bg-surface-alt: #eef2f6;
-	--bg-soft: #f0f4f8;
-	--border: #d8dfe8;
-	--text-primary: #111111;
-	--text-secondary: #444444;
-	--text-muted: #777777;
-	--accent: #2563eb;
-	--accent-strong: #1d4ed8;
-	--accent-soft: #e8eefc;
+
+	/* MD3 system colors — Light */
+	--md-primary: #6750a4;
+	--md-on-primary: #ffffff;
+	--md-primary-container: #eaddff;
+	--md-on-primary-container: #21005d;
+
+	--md-secondary: #625b71;
+	--md-on-secondary: #ffffff;
+	--md-secondary-container: #e8def8;
+	--md-on-secondary-container: #1d192b;
+
+	--md-tertiary: #7d5260;
+	--md-on-tertiary: #ffffff;
+	--md-tertiary-container: #ffd8e4;
+	--md-on-tertiary-container: #31111d;
+
+	--md-error: #b3261e;
+	--md-on-error: #ffffff;
+	--md-error-container: #f9dedc;
+	--md-on-error-container: #410e0b;
+
+	--md-success: #146c2e;
+	--md-success-container: #c4eed0;
+	--md-on-success-container: #002106;
+
+	--md-background: #fffbfe;
+	--md-on-background: #1c1b1f;
+	--md-surface: #fffbfe;
+	--md-on-surface: #1c1b1f;
+	--md-surface-variant: #e7e0ec;
+	--md-on-surface-variant: #49454f;
+
+	/* Tonal surface ladder */
+	--md-surface-container-lowest: #ffffff;
+	--md-surface-container-low: #f7f2fa;
+	--md-surface-container: #f3edf7;
+	--md-surface-container-high: #ece6f0;
+	--md-surface-container-highest: #e6e0e9;
+
+	--md-outline: #79747e;
+	--md-outline-variant: #cac4d0;
+	--md-inverse-surface: #313033;
+	--md-inverse-on-surface: #f4eff4;
+	--md-inverse-primary: #d0bcff;
+	--md-shadow: 0deg 0% 0%;
+
+	/* Message bubbles */
+	--md-bubble-sent: var(--md-primary);
+	--md-on-bubble-sent: var(--md-on-primary);
+	--md-bubble-received: var(--md-surface-container-high);
+	--md-on-bubble-received: var(--md-on-surface);
+
+	/* Elevation shadows (soft, low-opacity — MD3 favours tonal depth) */
+	--md-elevation-1: 0 1px 2px hsl(var(--md-shadow) / 0.10), 0 1px 3px 1px hsl(var(--md-shadow) / 0.06);
+	--md-elevation-2: 0 1px 2px hsl(var(--md-shadow) / 0.12), 0 2px 6px 2px hsl(var(--md-shadow) / 0.08);
+	--md-elevation-3: 0 4px 8px 3px hsl(var(--md-shadow) / 0.10), 0 1px 3px hsl(var(--md-shadow) / 0.12);
+
+	/* ---- Back-compat aliases (old variable names → MD3 tokens) --------------
+	   Let unconverted components keep rendering coherently during migration.
+	   Remove once every surface has been converted. */
+	--bg-page: var(--md-background);
+	--bg-surface: var(--md-surface);
+	--bg-surface-alt: var(--md-surface-container-low);
+	--bg-soft: var(--md-surface-container);
+	--border: var(--md-outline-variant);
+	--text-primary: var(--md-on-surface);
+	--text-secondary: var(--md-on-surface-variant);
+	--text-muted: var(--md-outline);
+	--accent: var(--md-primary);
+	--accent-strong: var(--md-on-primary-container);
+	--accent-soft: var(--md-secondary-container);
 	--status-online: #22c55e;
-	--avatar-group-bg: #0f766e;
-	--avatar-selected-bg: #1e40af;
-	--avatar-neutral-bg: #64748b;
-	--success-bg: #dcfce7;
-	--success-text: #166534;
-	--shadow-pane: 2px 0 8px rgba(15, 23, 42, 0.04);
-	--shadow-accent: 0 8px 20px rgba(26, 43, 94, 0.28);
-	--bubble-received: #eceff3;
-	--bubble-sent: #2563eb;
-	--pill-bg: #f8fafc;
-	--pill-text: #333333;
-	--pill-border: #d0d8e4;
-	--resume-bg: #f0f4f8;
-	--resume-text: #111111;
-	--resume-border: #d0d8e4;
-	--toggle-bg: #f0f4f8;
-	--toggle-text: #111111;
-	--timeline-border: #cbd5e0;
-	--nav-bg: #161616;
-	--nav-surface: #1e1e1e;
-	--nav-surface-hover: #2a2a2a;
-	--nav-border: #2a2a2a;
-	--nav-text-primary: #ffffff;
-	--nav-text-secondary: #a0a0a0;
-	--nav-text-muted: #6b6b6b;
-	--nav-shadow: 2px 0 8px rgba(0, 0, 0, 0.25);
+	--avatar-group-bg: var(--md-tertiary);
+	--avatar-selected-bg: var(--md-primary);
+	--avatar-neutral-bg: var(--md-secondary);
+	--success-bg: var(--md-success-container);
+	--success-text: var(--md-on-success-container);
+	--shadow-pane: var(--md-elevation-1);
+	--shadow-accent: var(--md-elevation-2);
+	--bubble-received: var(--md-bubble-received);
+	--bubble-sent: var(--md-bubble-sent);
+	--pill-bg: var(--md-surface-container);
+	--pill-text: var(--md-on-surface-variant);
+	--pill-border: var(--md-outline-variant);
+	--nav-bg: var(--md-surface-container-low);
+	--nav-surface: var(--md-surface-container);
+	--nav-surface-hover: var(--md-surface-container-high);
+	--nav-border: var(--md-outline-variant);
+	--nav-text-primary: var(--md-on-surface);
+	--nav-text-secondary: var(--md-on-surface-variant);
+	--nav-text-muted: var(--md-outline);
+	--nav-shadow: var(--md-elevation-1);
 }
 
 [data-theme='dark'] {
-	--bg-page: #0d0d0d;
-	--bg-surface: #161616;
-	--bg-surface-alt: #1a1a1a;
-	--bg-soft: #1e1e1e;
-	--border: #2a2a2a;
-	--text-primary: #ffffff;
-	--text-secondary: #a0a0a0;
-	--text-muted: #6b6b6b;
-	--accent: #c8b89a;
-	--accent-strong: #d4c5a9;
-	--accent-soft: #1e1e1e;
+	color-scheme: dark;
+
+	/* MD3 system colors — Dark */
+	--md-primary: #d0bcff;
+	--md-on-primary: #381e72;
+	--md-primary-container: #4f378b;
+	--md-on-primary-container: #eaddff;
+
+	--md-secondary: #ccc2dc;
+	--md-on-secondary: #332d41;
+	--md-secondary-container: #4a4458;
+	--md-on-secondary-container: #e8def8;
+
+	--md-tertiary: #efb8c8;
+	--md-on-tertiary: #492532;
+	--md-tertiary-container: #633b48;
+	--md-on-tertiary-container: #ffd8e4;
+
+	--md-error: #f2b8b5;
+	--md-on-error: #601410;
+	--md-error-container: #8c1d18;
+	--md-on-error-container: #f9dedc;
+
+	--md-success: #7ddb90;
+	--md-success-container: #0a4d1c;
+	--md-on-success-container: #c4eed0;
+
+	--md-background: #141218;
+	--md-on-background: #e6e1e5;
+	--md-surface: #141218;
+	--md-on-surface: #e6e1e5;
+	--md-surface-variant: #49454f;
+	--md-on-surface-variant: #cac4d0;
+
+	--md-surface-container-lowest: #0f0d13;
+	--md-surface-container-low: #1d1b20;
+	--md-surface-container: #211f26;
+	--md-surface-container-high: #2b2930;
+	--md-surface-container-highest: #36343b;
+
+	--md-outline: #938f99;
+	--md-outline-variant: #49454f;
+	--md-inverse-surface: #e6e1e5;
+	--md-inverse-on-surface: #313033;
+	--md-inverse-primary: #6750a4;
+	--md-shadow: 0deg 0% 0%;
+
+	--md-bubble-sent: var(--md-primary-container);
+	--md-on-bubble-sent: var(--md-on-primary-container);
+	--md-bubble-received: var(--md-surface-container-high);
+	--md-on-bubble-received: var(--md-on-surface);
+
+	--md-elevation-1: 0 1px 3px hsl(var(--md-shadow) / 0.40), 0 1px 2px hsl(var(--md-shadow) / 0.30);
+	--md-elevation-2: 0 2px 6px 2px hsl(var(--md-shadow) / 0.35), 0 1px 2px hsl(var(--md-shadow) / 0.30);
+	--md-elevation-3: 0 4px 8px 3px hsl(var(--md-shadow) / 0.35), 0 1px 3px hsl(var(--md-shadow) / 0.40);
+
 	--status-online: #34d399;
-	--avatar-group-bg: #0f766e;
-	--avatar-selected-bg: #475569;
-	--avatar-neutral-bg: #374151;
-	--success-bg: #052e1f;
-	--success-text: #86efac;
-	--shadow-pane: 2px 0 8px rgba(0, 0, 0, 0.25);
-	--shadow-accent: 0 8px 20px rgba(0, 0, 0, 0.45);
-	--bubble-received: #1e1e1e;
-	--bubble-sent: #2a2a2a;
-	--pill-bg: #1e1e1e;
-	--pill-text: #cccccc;
-	--pill-border: #2e2e2e;
-	--resume-bg: #ffffff;
-	--resume-text: #0d0d0d;
-	--resume-border: #ffffff;
-	--toggle-bg: #1e1e1e;
-	--toggle-text: #ffffff;
-	--timeline-border: #2a2a2a;
-	--nav-bg: #161616;
-	--nav-surface: #1e1e1e;
-	--nav-surface-hover: #2a2a2a;
-	--nav-border: #2a2a2a;
-	--nav-text-primary: #ffffff;
-	--nav-text-secondary: #a0a0a0;
-	--nav-text-muted: #6b6b6b;
-	--nav-shadow: 2px 0 8px rgba(0, 0, 0, 0.25);
+
+	/* ---- Back-compat aliases MUST be re-declared here ----------------------
+	   CSS custom properties are inherited as their *computed* value, so an alias
+	   like `--bg-surface: var(--md-surface)` declared only in :root would freeze
+	   to the light value and inherit unchanged into dark subtrees. Re-declaring
+	   forces each alias to recompute against the dark tokens above. */
+	--bg-page: var(--md-background);
+	--bg-surface: var(--md-surface);
+	--bg-surface-alt: var(--md-surface-container-low);
+	--bg-soft: var(--md-surface-container);
+	--border: var(--md-outline-variant);
+	--text-primary: var(--md-on-surface);
+	--text-secondary: var(--md-on-surface-variant);
+	--text-muted: var(--md-outline);
+	--accent: var(--md-primary);
+	--accent-strong: var(--md-on-primary-container);
+	--accent-soft: var(--md-secondary-container);
+	--avatar-group-bg: var(--md-tertiary);
+	--avatar-selected-bg: var(--md-primary);
+	--avatar-neutral-bg: var(--md-secondary);
+	--success-bg: var(--md-success-container);
+	--success-text: var(--md-on-success-container);
+	--shadow-pane: var(--md-elevation-1);
+	--shadow-accent: var(--md-elevation-2);
+	--bubble-received: var(--md-bubble-received);
+	--bubble-sent: var(--md-bubble-sent);
+	--pill-bg: var(--md-surface-container);
+	--pill-text: var(--md-on-surface-variant);
+	--pill-border: var(--md-outline-variant);
+	--nav-bg: var(--md-surface-container-low);
+	--nav-surface: var(--md-surface-container);
+	--nav-surface-hover: var(--md-surface-container-high);
+	--nav-border: var(--md-outline-variant);
+	--nav-text-primary: var(--md-on-surface);
+	--nav-text-secondary: var(--md-on-surface-variant);
+	--nav-text-muted: var(--md-outline);
+	--nav-shadow: var(--md-elevation-1);
 }
 
+/* ============================================================================
+   Tailwind v4 theme mapping — `inline` keeps the var() reference in generated
+   utilities so runtime theme switching works. Enables e.g. bg-md-surface,
+   text-md-on-surface, rounded-md3-lg, ease-md-standard, font-sans (Roboto).
+   ============================================================================ */
+@theme inline {
+	--font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
+
+	--color-md-primary: var(--md-primary);
+	--color-md-on-primary: var(--md-on-primary);
+	--color-md-primary-container: var(--md-primary-container);
+	--color-md-on-primary-container: var(--md-on-primary-container);
+
+	--color-md-secondary: var(--md-secondary);
+	--color-md-on-secondary: var(--md-on-secondary);
+	--color-md-secondary-container: var(--md-secondary-container);
+	--color-md-on-secondary-container: var(--md-on-secondary-container);
+
+	--color-md-tertiary: var(--md-tertiary);
+	--color-md-on-tertiary: var(--md-on-tertiary);
+	--color-md-tertiary-container: var(--md-tertiary-container);
+	--color-md-on-tertiary-container: var(--md-on-tertiary-container);
+
+	--color-md-error: var(--md-error);
+	--color-md-on-error: var(--md-on-error);
+	--color-md-error-container: var(--md-error-container);
+	--color-md-on-error-container: var(--md-on-error-container);
+
+	--color-md-success: var(--md-success);
+	--color-md-success-container: var(--md-success-container);
+	--color-md-on-success-container: var(--md-on-success-container);
+
+	--color-md-background: var(--md-background);
+	--color-md-on-background: var(--md-on-background);
+	--color-md-surface: var(--md-surface);
+	--color-md-on-surface: var(--md-on-surface);
+	--color-md-surface-variant: var(--md-surface-variant);
+	--color-md-on-surface-variant: var(--md-on-surface-variant);
+
+	--color-md-surface-container-lowest: var(--md-surface-container-lowest);
+	--color-md-surface-container-low: var(--md-surface-container-low);
+	--color-md-surface-container: var(--md-surface-container);
+	--color-md-surface-container-high: var(--md-surface-container-high);
+	--color-md-surface-container-highest: var(--md-surface-container-highest);
+
+	--color-md-outline: var(--md-outline);
+	--color-md-outline-variant: var(--md-outline-variant);
+	--color-md-inverse-surface: var(--md-inverse-surface);
+	--color-md-inverse-on-surface: var(--md-inverse-on-surface);
+	--color-md-inverse-primary: var(--md-inverse-primary);
+
+	--color-md-bubble-sent: var(--md-bubble-sent);
+	--color-md-on-bubble-sent: var(--md-on-bubble-sent);
+	--color-md-bubble-received: var(--md-bubble-received);
+	--color-md-on-bubble-received: var(--md-on-bubble-received);
+
+	/* MD3 shape scale */
+	--radius-md3-xs: 8px;
+	--radius-md3-sm: 12px;
+	--radius-md3-md: 16px;
+	--radius-md3-lg: 24px;
+	--radius-md3-xl: 28px;
+	--radius-md3-2xl: 32px;
+	--radius-md3-3xl: 48px;
+
+	--ease-md-standard: cubic-bezier(0.2, 0, 0, 1);
+
+	--shadow-md3-1: var(--md-elevation-1);
+	--shadow-md3-2: var(--md-elevation-2);
+	--shadow-md3-3: var(--md-elevation-3);
+}
+
+/* ============================================================================
+   Base
+   ============================================================================ */
 body {
-	background-color: var(--bg-page);
-	color: var(--text-primary);
+	background-color: var(--md-background);
+	color: var(--md-on-surface);
+	font-family: "Roboto", ui-sans-serif, system-ui, sans-serif;
+	-webkit-font-smoothing: antialiased;
 	transition:
-		background-color var(--dur-state) var(--ease-out-quart),
-		color var(--dur-state) var(--ease-out-quart);
+		background-color var(--dur-state) var(--ease-standard),
+		color var(--dur-state) var(--ease-standard);
 }
 
+/* ============================================================================
+   State-layer utility — MD3 interaction model (opacity overlay, not colour swap).
+   Put `md-state` on a positioned element; an ::after layer of the element's own
+   text colour fades in on hover/focus/active. Direct children sit above it.
+   ============================================================================ */
+@utility md-state {
+	position: relative;
+	isolation: isolate;
+
+	&::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: currentColor;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity var(--dur-state) var(--ease-standard);
+		z-index: 0;
+	}
+	&:hover::after { opacity: 0.08; }
+	&:focus-visible::after { opacity: 0.10; }
+	&:active::after { opacity: 0.12; }
+	& > * { position: relative; z-index: 1; }
+}
+
+/* ============================================================================
+   Motion vocabulary
+   ============================================================================ */
 @keyframes fade-up-in {
-	from {
-		opacity: 0;
-		transform: translate3d(0, 10px, 0);
-	}
-	to {
-		opacity: 1;
-		transform: translate3d(0, 0, 0);
-	}
+	from { opacity: 0; transform: translate3d(0, 10px, 0); }
+	to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
-
 @keyframes soft-scale-in {
-	from {
-		opacity: 0;
-		transform: scale(0.985);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
+	from { opacity: 0; transform: scale(0.985); }
+	to { opacity: 1; transform: scale(1); }
 }
-
+@keyframes message-in {
+	from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.98); }
+	to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
 @keyframes typing-pulse {
-	0%,
-	80%,
-	100% {
-		transform: translateY(0);
-		opacity: 0.5;
-	}
-	40% {
-		transform: translateY(-2px);
-		opacity: 1;
-	}
+	0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+	40% { transform: translateY(-2px); opacity: 1; }
 }
 
-.motion-enter {
-	animation: fade-up-in var(--dur-enter) var(--ease-out-expo) both;
-}
-
-.motion-enter-soft {
-	animation: soft-scale-in 300ms var(--ease-out-quint) both;
-}
-
+.motion-enter { animation: fade-up-in var(--dur-enter) var(--ease-out-expo) both; }
+.motion-enter-soft { animation: soft-scale-in 300ms var(--ease-out-quint) both; }
+.motion-message { animation: message-in var(--dur-state) var(--ease-standard) both; }
 .motion-popover {
 	animation: soft-scale-in 220ms var(--ease-out-quart) both;
 	transform-origin: bottom right;
@@ -149,44 +356,26 @@ body {
 	width: 0.45rem;
 	height: 0.45rem;
 	border-radius: 999px;
-	background: var(--accent);
+	background: var(--md-primary);
 	animation: typing-pulse 1.1s ease-in-out infinite;
 }
+.typing-dot-delay-1 { animation-delay: 140ms; }
+.typing-dot-delay-2 { animation-delay: 280ms; }
 
-.typing-dot-delay-1 {
-	animation-delay: 140ms;
-}
-
-.typing-dot-delay-2 {
-	animation-delay: 280ms;
-}
-
-.motion-stagger-1 {
-	animation-delay: 80ms;
-}
-
-.motion-stagger-2 {
-	animation-delay: 140ms;
-}
-
-.motion-stagger-3 {
-	animation-delay: 200ms;
-}
+.motion-stagger-1 { animation-delay: 80ms; }
+.motion-stagger-2 { animation-delay: 140ms; }
+.motion-stagger-3 { animation-delay: 200ms; }
 
 .motion-interactive {
 	transition:
-		transform var(--dur-state) var(--ease-out-quart),
-		opacity var(--dur-state) var(--ease-out-quart),
-		background-color var(--dur-state) var(--ease-out-quart),
-		border-color var(--dur-state) var(--ease-out-quart),
-		color var(--dur-state) var(--ease-out-quart),
-		box-shadow var(--dur-state) var(--ease-out-quart);
+		transform var(--dur-state) var(--ease-standard),
+		opacity var(--dur-state) var(--ease-standard),
+		background-color var(--dur-state) var(--ease-standard),
+		border-color var(--dur-state) var(--ease-standard),
+		color var(--dur-state) var(--ease-standard),
+		box-shadow var(--dur-state) var(--ease-standard);
 }
-
-.motion-interactive:hover {
-	transform: translate3d(0, -1px, 0);
-}
-
+.motion-interactive:hover { transform: translate3d(0, -1px, 0); }
 .motion-interactive:active {
 	transform: scale(0.98);
 	transition-duration: var(--dur-instant);
@@ -194,27 +383,21 @@ body {
 
 .motion-focus {
 	transition:
-		border-color var(--dur-state) var(--ease-out-quart),
-		box-shadow var(--dur-state) var(--ease-out-quart),
-		background-color var(--dur-state) var(--ease-out-quart);
+		border-color var(--dur-state) var(--ease-standard),
+		box-shadow var(--dur-state) var(--ease-standard),
+		background-color var(--dur-state) var(--ease-standard);
 }
-
 .motion-focus:focus-visible {
-	box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-primary) 24%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
+	*, *::before, *::after {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 		scroll-behavior: auto !important;
 	}
-
 	.motion-interactive:hover,
-	.motion-interactive:active {
-		transform: none !important;
-	}
+	.motion-interactive:active { transform: none !important; }
 }

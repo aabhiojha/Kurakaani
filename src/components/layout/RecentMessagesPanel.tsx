@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import type { ChatSection, Conversation } from '../../types/chat'
 import type { FriendUserResponse } from '../../types/api/friend'
 import { searchMessagesAcrossRooms } from '../../services/roomService'
 import { resolveAssetUrl } from '../../lib/config'
+import { cn } from '../../lib/cn'
+import { Button, TextField } from '../ui'
 
 type RecentMessagesPanelProps = {
 	section: ChatSection
@@ -39,7 +41,7 @@ export function RecentMessagesPanel({
 	const [isSearchingMessages, setIsSearchingMessages] = useState(false)
 	const [searchStatus, setSearchStatus] = useState<string | null>(null)
 	const headerTitle = section === 'groups' ? 'Groups' : 'Recent Messages'
-	const searchPlaceholder = section === 'groups' ? 'Search messages in groups...' : 'Search discussions...'
+	const searchPlaceholder = section === 'groups' ? 'Search messages in groups…' : 'Search discussions…'
 
 	useEffect(() => {
 		if (newChatTrigger > 0) {
@@ -71,23 +73,19 @@ export function RecentMessagesPanel({
 		let disposed = false
 
 		const timeoutId = window.setTimeout(() => {
-			if (disposed) {
-				return
-			}
+			if (disposed) return
 
 			setIsSearchingMessages(true)
 			setSearchStatus(null)
 
 			searchMessagesAcrossRooms(trimmed)
 				.then((results) => {
-					if (disposed) {
-						return
-					}
-					const groupedRoomIds = new Set(conversations.filter((conversation) => conversation.isGroup).map((conversation) => conversation.id))
+					if (disposed) return
+					const groupedRoomIds = new Set(
+						conversations.filter((conversation) => conversation.isGroup).map((conversation) => conversation.id),
+					)
 					const matched = new Set(
-						results
-							.map((message) => message.roomId)
-							.filter((roomId) => groupedRoomIds.has(roomId)),
+						results.map((message) => message.roomId).filter((roomId) => groupedRoomIds.has(roomId)),
 					)
 					setMatchedRoomIds(matched)
 					setSearchStatus(
@@ -97,16 +95,12 @@ export function RecentMessagesPanel({
 					)
 				})
 				.catch((error: unknown) => {
-					if (disposed) {
-						return
-					}
+					if (disposed) return
 					setMatchedRoomIds(new Set())
 					setSearchStatus(error instanceof Error ? error.message : 'Failed to search group messages.')
 				})
 				.finally(() => {
-					if (!disposed) {
-						setIsSearchingMessages(false)
-					}
+					if (!disposed) setIsSearchingMessages(false)
 				})
 		}, 250)
 
@@ -118,19 +112,17 @@ export function RecentMessagesPanel({
 
 	const visibleConversations = useMemo(() => {
 		if (section === 'groups' && searchQuery.trim()) {
-			if (matchedRoomIds === null) {
-				return []
-			}
+			if (matchedRoomIds === null) return []
 			return conversations.filter((conversation) => matchedRoomIds.has(conversation.id))
 		}
 
 		const lowered = searchQuery.trim().toLowerCase()
-		if (!lowered) {
-			return conversations
-		}
+		if (!lowered) return conversations
 
-		return conversations.filter((conversation) =>
-			conversation.name.toLowerCase().includes(lowered) || conversation.preview.toLowerCase().includes(lowered),
+		return conversations.filter(
+			(conversation) =>
+				conversation.name.toLowerCase().includes(lowered) ||
+				conversation.preview.toLowerCase().includes(lowered),
 		)
 	}, [conversations, matchedRoomIds, searchQuery, section])
 
@@ -145,16 +137,19 @@ export function RecentMessagesPanel({
 		}
 
 		setIsCreatingChat(true)
-		const result = section === 'groups'
-			? await onCreateGroup(trimmedName, trimmedDescription)
-			: await onCreateDirect(trimmedName, '')
+		const result =
+			section === 'groups'
+				? await onCreateGroup(trimmedName, trimmedDescription)
+				: await onCreateDirect(trimmedName, '')
 		setIsCreatingChat(false)
 
 		if (result.ok) {
 			setCreateName('')
 			setCreateDescription('')
 			setIsComposerOpen(false)
-			setCreateChatStatus(section === 'groups' ? 'Group created successfully.' : 'Direct chat created successfully.')
+			setCreateChatStatus(
+				section === 'groups' ? 'Group created successfully.' : 'Direct chat created successfully.',
+			)
 			return
 		}
 
@@ -162,62 +157,66 @@ export function RecentMessagesPanel({
 	}
 
 	return (
-		<section className={`motion-enter motion-stagger-1 w-full min-w-0 shrink-0 border-r border-[var(--border)] bg-[var(--bg-surface)] md:w-[340px] lg:w-[320px] ${className}`}>
-			<div className="border-b border-[var(--border)] px-4 py-4 sm:px-5">
+		<section
+			className={cn(
+				'motion-enter motion-stagger-1 flex w-full min-w-0 shrink-0 flex-col bg-md-surface md:w-[340px] lg:w-[320px]',
+				className,
+			)}
+		>
+			<div className="border-b border-md-outline-variant px-4 py-4 sm:px-5">
 				<div className="mb-4 flex items-center justify-between">
-					<div>
-						<h2 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">{headerTitle}</h2>
-						{/* <p className="text-xs text-[var(--text-muted)]">{conversations.length} active conversations</p> */}
-					</div>
-					<button className="motion-interactive rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-soft)] hover:text-[var(--text-primary)]" aria-label="filter messages">
-						<SlidersHorizontal size={17} />
-					</button>
+					<h2 className="text-xl font-medium tracking-tight text-md-on-surface">{headerTitle}</h2>
 				</div>
+
 				<label className="relative block">
-					<Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+					<Search
+						size={18}
+						className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant"
+					/>
 					<input
 						type="text"
 						value={searchQuery}
 						onChange={(event) => setSearchQuery(event.target.value)}
 						placeholder={searchPlaceholder}
-						className="motion-focus w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] py-2.5 pl-9 pr-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
+						className="h-12 w-full rounded-full bg-md-surface-container-highest py-2.5 pl-11 pr-4 text-sm text-md-on-surface outline-none transition-shadow duration-200 ease-md-standard placeholder:text-md-on-surface-variant focus-visible:ring-2 focus-visible:ring-md-primary"
 					/>
 				</label>
+
 				{section === 'groups' && searchQuery.trim() && (
-					<p className="mt-2 text-xs text-[var(--text-secondary)]">
-						{isSearchingMessages ? 'Searching messages…' : (searchStatus ?? '\u00A0')}
+					<p className="mt-2 px-1 text-xs text-md-on-surface-variant">
+						{isSearchingMessages ? 'Searching messages…' : searchStatus ?? ' '}
 					</p>
 				)}
+
 				{isComposerOpen && (
-					<form onSubmit={handleCreateChat} className="motion-enter-soft mt-3 rounded-xl border border-[var(--border)] bg-[var(--bg-surface-alt)] p-3">
-						<div className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-							<Plus size={14} />
+					<form
+						onSubmit={handleCreateChat}
+						className="motion-enter-soft mt-3 rounded-md3-md bg-md-surface-container p-4"
+					>
+						<div className="mb-3 flex items-center gap-2 text-sm font-medium text-md-on-surface">
+							<Plus size={16} />
 							{section === 'groups' ? 'Create Group' : 'Create Direct Chat'}
 						</div>
 						{section === 'groups' ? (
-							<>
-								<input
-									type="text"
+							<div className="space-y-3">
+								<TextField
+									label="Group name"
 									value={createName}
 									onChange={(event) => setCreateName(event.target.value)}
-									placeholder="Group name"
-									className="motion-focus mb-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
 								/>
-								<input
-									type="text"
+								<TextField
+									label="Description (optional)"
 									value={createDescription}
 									onChange={(event) => setCreateDescription(event.target.value)}
-									placeholder="Description (optional)"
-									className="motion-focus mb-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] focus:outline-none"
 								/>
-							</>
+							</div>
 						) : (
 							<select
 								value={createName}
 								onChange={(event) => setCreateName(event.target.value)}
-								className="motion-focus mb-2 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+								className="mb-2 h-12 w-full rounded-t-md3-sm border-b-2 border-md-outline bg-md-surface-container-highest px-4 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
 							>
-								<option value="">Select a friend...</option>
+								<option value="">Select a friend…</option>
 								{friends.map((friend) => (
 									<option key={friend.userId} value={String(friend.userId)}>
 										{friend.username}
@@ -225,77 +224,102 @@ export function RecentMessagesPanel({
 								))}
 							</select>
 						)}
-						<div className="flex items-center justify-between">
-							<button
-								type="submit"
-								disabled={isCreatingChat}
-								className="motion-interactive rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-[var(--bg-page)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-70"
-							>
-								{isCreatingChat ? 'Creating...' : 'Create'}
-							</button>
-							{createChatStatus && <span className="text-[11px] text-[var(--text-muted)]">{createChatStatus}</span>}
+						<div className="mt-3 flex items-center justify-between gap-2">
+							<Button type="submit" size="sm" isLoading={isCreatingChat}>
+								{isCreatingChat ? 'Creating…' : 'Create'}
+							</Button>
+							{createChatStatus && (
+								<span className="text-[11px] text-md-on-surface-variant">{createChatStatus}</span>
+							)}
 						</div>
 					</form>
 				)}
 			</div>
 
-			<div className="space-y-1 px-2 py-2">
+			<div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2">
 				{visibleConversations.map((conversation) => {
 					const avatarUrl = resolveAssetUrl(conversation.avatarImageUrl)
 					const unreadCount = conversation.unreadCount ?? 0
+					const isSelected = conversation.id === selectedConversationId
 
 					return (
 						<article
-						key={conversation.id}
-						onClick={() => onSelectConversation(conversation.id)}
-						className={`motion-interactive flex min-h-11 cursor-pointer gap-3 rounded-xl border px-3 py-3 ${
-							conversation.id === selectedConversationId
-								? 'border-[var(--accent)] bg-[var(--accent-soft)]'
-								: 'border-transparent hover:bg-[var(--bg-soft)]'
-						}`}
-					>
-						<div
-							className={`relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold text-white ${
-								conversation.isGroup
-									? 'bg-[var(--avatar-group-bg)]'
-									: conversation.id === selectedConversationId
-										? 'bg-[var(--avatar-selected-bg)]'
-										: 'bg-[var(--avatar-neutral-bg)]'
-							}`}
-						>
-							{conversation.avatar}
-							{avatarUrl && (
-								<img
-									src={avatarUrl}
-									alt={conversation.name}
-									className="absolute h-10 w-10 rounded-full object-cover"
-									onError={(event) => {
-										event.currentTarget.style.display = 'none'
-									}}
-								/>
+							key={conversation.id}
+							onClick={() => onSelectConversation(conversation.id)}
+							className={cn(
+								'md-state flex min-h-11 cursor-pointer gap-3 rounded-md3-md px-3 py-3',
+								'transition-colors duration-200 ease-md-standard',
+								isSelected
+									? 'bg-md-secondary-container'
+									: 'text-md-on-surface',
 							)}
-						</div>
-						<div className="min-w-0 flex-1">
-							<div className="mb-0.5 flex items-center justify-between gap-2">
-								<div className="flex min-w-0 items-center gap-2">
-									<h3 className="truncate text-sm font-semibold text-[var(--text-primary)]">{conversation.name}</h3>
-									{unreadCount > 0 && (
-										<span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--bg-page)] shadow-sm">
-											{unreadCount > 99 ? '99+' : unreadCount}
-										</span>
-									)}
-								</div>
-								<span className={`shrink-0 text-xs ${unreadCount > 0 ? 'font-semibold text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{conversation.time}</span>
+						>
+							<div
+								className={cn(
+									'relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-semibold',
+									conversation.isGroup
+										? 'bg-md-tertiary-container text-md-on-tertiary-container'
+										: 'bg-md-primary-container text-md-on-primary-container',
+								)}
+							>
+								{conversation.avatar}
+								{avatarUrl && (
+									<img
+										src={avatarUrl}
+										alt={conversation.name}
+										className="absolute h-11 w-11 rounded-full object-cover"
+										onError={(event) => {
+											event.currentTarget.style.display = 'none'
+										}}
+									/>
+								)}
 							</div>
-							<p className={`truncate text-sm ${unreadCount > 0 ? 'font-medium text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
-								{conversation.preview}
-							</p>
-						</div>
+							<div className="min-w-0 flex-1">
+								<div className="mb-0.5 flex items-center justify-between gap-2">
+									<div className="flex min-w-0 items-center gap-2">
+										<h3
+											className={cn(
+												'truncate text-sm',
+												isSelected
+													? 'font-semibold text-md-on-secondary-container'
+													: 'font-medium text-md-on-surface',
+											)}
+										>
+											{conversation.name}
+										</h3>
+										{unreadCount > 0 && (
+											<span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-md-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-md-on-primary">
+												{unreadCount > 99 ? '99+' : unreadCount}
+											</span>
+										)}
+									</div>
+									<span
+										className={cn(
+											'shrink-0 text-xs',
+											unreadCount > 0 ? 'font-semibold text-md-primary' : 'text-md-on-surface-variant',
+										)}
+									>
+										{conversation.time}
+									</span>
+								</div>
+								<p
+									className={cn(
+										'truncate text-sm',
+										isSelected
+											? 'text-md-on-secondary-container'
+											: unreadCount > 0
+												? 'font-medium text-md-on-surface'
+												: 'text-md-on-surface-variant',
+									)}
+								>
+									{conversation.preview}
+								</p>
+							</div>
 						</article>
 					)
 				})}
 				{visibleConversations.length === 0 && (
-					<div className="px-3 py-8 text-center text-sm text-[var(--text-secondary)]">
+					<div className="px-3 py-10 text-center text-sm text-md-on-surface-variant">
 						{section === 'groups' && searchQuery.trim()
 							? 'No groups matched your message search.'
 							: 'No conversations found.'}

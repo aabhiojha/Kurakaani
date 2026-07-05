@@ -18,26 +18,40 @@ type NotificationToastsProps = {
 const getToastIcon = (type: NotificationToastType) => {
 	switch (type) {
 		case 'FRIEND_REQUEST':
-			return <UserPlus size={14} />
+			return <UserPlus size={16} />
 		case 'DM':
-			return <MessageSquareMore size={14} />
+			return <MessageSquareMore size={16} />
 		case 'ROOM':
-			return <Users size={14} />
+			return <Users size={16} />
 		default:
-			return <Bell size={14} />
+			return <Bell size={16} />
 	}
 }
 
+/** Tonal container pairing per notification type, following MD3 colour roles. */
 const getToastAccentClass = (type: NotificationToastType) => {
 	switch (type) {
 		case 'FRIEND_REQUEST':
-			return 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+			return 'bg-md-primary-container text-md-on-primary-container'
 		case 'DM':
-			return 'border-[var(--bubble-sent)] bg-[var(--bg-soft)] text-[var(--bubble-sent)]'
+			return 'bg-md-secondary-container text-md-on-secondary-container'
 		case 'ROOM':
-			return 'border-[var(--avatar-group-bg)] bg-[var(--bg-soft)] text-[var(--avatar-group-bg)]'
+			return 'bg-md-tertiary-container text-md-on-tertiary-container'
 		default:
-			return 'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)]'
+			return 'bg-md-surface-container-high text-md-on-surface'
+	}
+}
+
+const getToastBarClass = (type: NotificationToastType) => {
+	switch (type) {
+		case 'FRIEND_REQUEST':
+			return 'bg-md-primary'
+		case 'DM':
+			return 'bg-md-secondary'
+		case 'ROOM':
+			return 'bg-md-tertiary'
+		default:
+			return 'bg-md-outline'
 	}
 }
 
@@ -58,13 +72,13 @@ export function NotificationToasts({ notifications, onDismiss }: NotificationToa
 			{notifications.map((notification) => (
 				<article
 					key={notification.id}
-					className="motion-enter-soft pointer-events-auto overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] shadow-[0_18px_42px_rgba(15,23,42,0.16)]"
+					className="motion-enter-soft pointer-events-auto overflow-hidden rounded-md3-lg bg-md-surface-container-high shadow-md3-3"
 					role="status"
 				>
-					<div className="h-1 w-full bg-[var(--accent)] opacity-80" aria-hidden="true" />
+					<div className={`h-1 w-full ${getToastBarClass(notification.type)}`} aria-hidden="true" />
 					<div className="flex items-start gap-3 p-3.5">
 						<div
-							className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${getToastAccentClass(notification.type)}`}
+							className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${getToastAccentClass(notification.type)}`}
 							aria-hidden="true"
 						>
 							{getToastIcon(notification.type)}
@@ -72,27 +86,25 @@ export function NotificationToasts({ notifications, onDismiss }: NotificationToa
 						<div className="min-w-0 flex-1">
 							<div className="flex items-start justify-between gap-2">
 								<div className="min-w-0">
-									<p className="truncate text-sm font-semibold text-[var(--text-primary)]">
-										{notification.title}
-									</p>
-									<p className="mt-0.5 text-sm leading-5 text-[var(--text-secondary)]">
-										{notification.body}
-									</p>
+									<p className="truncate text-sm font-medium text-md-on-surface">{notification.title}</p>
+									<p className="mt-0.5 text-sm leading-5 text-md-on-surface-variant">{notification.body}</p>
 								</div>
 								<button
 									type="button"
 									onClick={() => onDismiss(notification.id)}
-									className="motion-interactive -mr-1 -mt-1 rounded-full p-1.5 text-[var(--text-muted)] hover:bg-[var(--bg-soft)] hover:text-[var(--text-primary)]"
+									className="md-state -mr-1 -mt-1 rounded-full p-1.5 text-md-on-surface-variant"
 									aria-label="dismiss notification"
 								>
-									<X size={14} />
+									<X size={16} />
 								</button>
 							</div>
 							<div className="mt-2 flex items-center justify-between gap-2">
-								<span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${getToastAccentClass(notification.type)}`}>
+								<span
+									className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${getToastAccentClass(notification.type)}`}
+								>
 									{notification.type === 'FRIEND_REQUEST' ? 'Friend' : notification.type === 'DM' ? 'Direct' : 'Room'}
 								</span>
-								<span className="text-[11px] text-[var(--text-muted)]">{formatTime(notification.createdAt)}</span>
+								<span className="text-[11px] text-md-outline">{formatTime(notification.createdAt)}</span>
 							</div>
 						</div>
 					</div>

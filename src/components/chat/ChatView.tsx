@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
-import { CircleEllipsis, Image as ImageIcon, Plus, Search, SendHorizontal, Smile, UserPlus, Users } from 'lucide-react'
+import { CircleEllipsis, Image as ImageIcon, Loader2, Plus, Search, SendHorizontal, Smile, UserPlus, Users } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
+
+// Lazy-loaded so the emoji widget + its index stay out of the initial bundle.
+const EmojiPickerPanel = lazy(() => import('./EmojiPickerPanel'))
+import { Button } from '../ui'
 import { resolveAssetUrl } from '../../lib/config'
 import { getAddableFriends, addUsersToRoom, searchMessagesInRoom } from '../../services/roomService'
 import { mapSearchedMessagesToMessages } from '../../lib/chatUtils'
@@ -30,6 +34,7 @@ type ChatViewProps = {
 	onRemoveMembersFromRoom?: (conversationId: number, memberIds: number[]) => Promise<void>
 	onRetryMessage?: (conversationId: number, messageId: number) => void
 	isSendDisabled?: boolean
+	isDarkMode?: boolean
 }
 
 export function ChatView({
@@ -49,6 +54,7 @@ export function ChatView({
 	onRemoveMembersFromRoom,
 	onRetryMessage,
 	isSendDisabled = false,
+	isDarkMode = false,
 }: ChatViewProps) {
 	const conversationId = conversation?.id
 	const conversationName = conversation?.name ?? 'Conversation'
@@ -114,7 +120,6 @@ export function ChatView({
 	const typingStopTimeoutRef = useRef<number | null>(null)
 	const isTypingBurstActiveRef = useRef(false)
 	const shouldStickToBottomRef = useRef(true)
-	const emojiOptions = ['😀', '😂', '😍', '👍', '🔥', '🎉', '🙏', '💬']
 	const isCurrentUserAdmin = conversationIsGroup && typeof currentUserId === 'number'
 		? roomMembers.some((member) => member.userId === currentUserId && member.roomRole.toUpperCase() === 'ADMIN')
 		: false
@@ -417,8 +422,8 @@ export function ChatView({
 	}
 
 	const onSelectEmoji = (emoji: string) => {
+		// Keep the picker open so several emoji can be added in one go.
 		setDraftForConversation(`${draft}${emoji}`)
-		setIsEmojiOpen(false)
 		startTyping()
 	}
 
@@ -540,7 +545,7 @@ export function ChatView({
 
 	if (!conversation) {
 		return (
-			<section className="motion-enter motion-stagger-2 flex min-w-0 flex-1 flex-col items-center justify-center bg-[var(--bg-surface)]">
+			<section className="motion-enter motion-stagger-2 flex min-w-0 flex-1 flex-col items-center justify-center bg-md-surface">
 				<div className="text-center">
 					<h2 className="text-lg font-semibold text-[var(--text-primary)]">Click on a group to start chatting</h2>
 					<p className="text-[var(--text-secondary)]">Pick a group from the list to open the conversation.</p>
@@ -550,31 +555,32 @@ export function ChatView({
 	}
 
 	return (
-		<section ref={layoutRef} className="motion-enter motion-stagger-2 flex min-h-0 min-w-0 flex-1 bg-[var(--bg-surface)]">
+		<section ref={layoutRef} className="motion-enter motion-stagger-2 flex min-h-0 min-w-0 flex-1 bg-md-surface">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
-				<header className="flex items-center justify-between border-b border-[var(--border)] px-3 py-3 sm:px-5 lg:px-6">
+				<header className="flex items-center justify-between border-b border-md-outline-variant px-3 py-3 sm:px-5 lg:px-6">
 					<div className="flex items-center gap-3">
-						<div className={`h-11 w-11 overflow-hidden rounded-full text-center text-[15px] leading-[2.75rem] font-semibold text-white ${conversation.isGroup ? 'bg-[var(--avatar-group-bg)]' : 'bg-[var(--bubble-sent)]'}`}>
+						<div className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-[15px] font-semibold ${conversation.isGroup ? 'bg-md-tertiary-container text-md-on-tertiary-container' : 'bg-md-primary-container text-md-on-primary-container'}`}>
 							{conversation.avatar}
 						</div>
 						<div>
-							<h2 className="max-w-[46vw] truncate text-[15px] font-semibold tracking-tight text-[var(--text-primary)] sm:max-w-none sm:text-[17px]">{conversation.name}</h2>
-							<p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--text-muted)]">{conversation.subtitle}</p>
+							<h2 className="max-w-[46vw] truncate text-[15px] font-medium tracking-tight text-md-on-surface sm:max-w-none sm:text-[17px]">{conversation.name}</h2>
+							<p className="text-[11px] font-medium uppercase tracking-[0.12em] text-md-outline">{conversation.subtitle}</p>
 						</div>
 					</div>
 
 					<div className="flex items-center gap-2 sm:gap-4 lg:gap-6">
-						<nav className="hidden items-center gap-3 text-sm md:flex lg:gap-4">
-							<button className="motion-interactive rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-1 font-semibold text-[var(--accent)]">Messages</button>
-							<button className="motion-interactive pb-1 font-medium text-[var(--text-secondary)]">Shared Files</button>
+						<nav className="hidden items-center gap-2 text-sm md:flex">
+							<button className="md-state rounded-full bg-md-secondary-container px-4 py-1.5 font-medium text-md-on-secondary-container">Messages</button>
+							<button className="md-state rounded-full px-4 py-1.5 font-medium text-md-on-surface-variant">Shared Files</button>
 						</nav>
-						<div className="flex items-center gap-1 text-[var(--text-secondary)] sm:gap-2">
+						<div className="flex items-center gap-1 sm:gap-1.5">
 							{isCurrentUserAdmin && (
 								<button
 									type="button"
 									onClick={() => setRightPanelMode((previous) => (previous === 'settings' ? null : 'settings'))}
-									className={`motion-interactive rounded-lg p-2 hover:bg-[var(--bg-soft)] hover:text-[var(--text-primary)] ${rightPanelMode === 'settings' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}
+									className={`md-state inline-flex h-10 w-10 items-center justify-center rounded-full ${rightPanelMode === 'settings' ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
 									aria-label="manage room settings"
+									aria-pressed={rightPanelMode === 'settings'}
 								>
 									<Users size={18} />
 								</button>
@@ -587,16 +593,18 @@ export function ChatView({
 									}
 									return !previous
 								})}
-								className={`motion-interactive rounded-lg p-2 hover:bg-[var(--bg-soft)] hover:text-[var(--text-primary)] ${isSearchOpen ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}
+								className={`md-state inline-flex h-10 w-10 items-center justify-center rounded-full ${isSearchOpen ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
 								aria-label="search in conversation"
+								aria-pressed={isSearchOpen}
 							>
 								<Search size={18} />
 							</button>
 							<button
 								type="button"
 								onClick={() => setRightPanelMode((previous) => (previous === 'info' ? null : 'info'))}
-								className={`motion-interactive rounded-lg p-2 hover:bg-[var(--bg-soft)] hover:text-[var(--text-primary)] ${rightPanelMode === 'info' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : ''}`}
+								className={`md-state inline-flex h-10 w-10 items-center justify-center rounded-full ${rightPanelMode === 'info' ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
 								aria-label="conversation info"
+								aria-pressed={rightPanelMode === 'info'}
 							>
 								<CircleEllipsis size={18} />
 							</button>
@@ -605,26 +613,22 @@ export function ChatView({
 				</header>
 
 				{isSearchOpen && (
-					<form onSubmit={handleSearchSubmit} className="border-b border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 sm:px-5 lg:px-6">
+					<form onSubmit={handleSearchSubmit} className="border-b border-md-outline-variant bg-md-surface px-3 py-2 sm:px-5 lg:px-6">
 						<div className="flex items-center gap-2">
 							<input
 								type="text"
 								value={searchText}
 								onChange={(event) => setSearchText(event.target.value)}
 								placeholder="Search messages in this room"
-								className="motion-focus h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+								className="h-11 flex-1 rounded-full bg-md-surface-container-highest px-4 text-sm text-md-on-surface outline-none transition-shadow duration-200 ease-md-standard placeholder:text-md-on-surface-variant focus-visible:ring-2 focus-visible:ring-md-primary"
 							/>
-							<button
-								type="submit"
-								disabled={isSearching}
-								className="motion-interactive h-10 rounded-xl bg-[var(--accent)] px-3 text-sm font-semibold text-[var(--bg-page)] disabled:cursor-not-allowed disabled:opacity-70"
-							>
+							<Button type="submit" size="sm" isLoading={isSearching}>
 								{isSearching ? 'Searching…' : 'Search'}
-							</button>
+							</Button>
 							<button
 								type="button"
 								onClick={clearSearch}
-								className="motion-interactive h-10 rounded-xl border border-[var(--border)] px-3 text-sm font-medium text-[var(--text-secondary)]"
+								className="md-state h-9 rounded-full border border-md-outline px-4 text-sm font-medium text-md-on-surface-variant"
 							>
 								Clear
 							</button>
@@ -634,14 +638,14 @@ export function ChatView({
 				)}
 
 				<div className="relative min-h-0 flex-1">
-				<div ref={messagesContainerRef} className="h-full min-h-0 overflow-y-auto bg-[var(--bg-surface-alt)] px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+				<div ref={messagesContainerRef} className="h-full min-h-0 overflow-y-auto bg-md-surface-container-low px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
 				<div ref={messagesContentRef}>
 					{displayedMessages.length > 0 ? (
 						<>
 							<div className="mb-7 flex items-center gap-3">
-								<div className="h-px flex-1 bg-[var(--border)]" />
+								<div className="h-px flex-1 bg-md-outline-variant" />
 								<span className="text-xs font-medium tracking-[0.1em] text-[var(--text-muted)]">OCTOBER 24, 2023</span>
-								<div className="h-px flex-1 bg-[var(--border)]" />
+								<div className="h-px flex-1 bg-md-outline-variant" />
 							</div>
 
 							<div>
@@ -662,28 +666,28 @@ export function ChatView({
 							{typingUsers.length > 0 && (
 								<div className="motion-enter-soft mt-1.5 flex justify-start">
 									<div className="flex max-w-[78%] items-start gap-2.5">
-										<div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--avatar-neutral-bg)] text-[11px] font-semibold text-white">
+										<div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-md-tertiary-container text-[11px] font-semibold text-md-on-tertiary-container">
 											{typingAvatar}
 										</div>
-										<div className="rounded-2xl rounded-bl-sm bg-[var(--bubble-received)] px-3.5 py-2 text-sm text-[var(--text-primary)] shadow-sm">
+										<div className="rounded-md3-lg rounded-bl-md bg-md-bubble-received px-3.5 py-2 text-sm text-md-on-bubble-received">
 											<div className="flex items-center gap-2.5">
 												<div className="flex items-center gap-1.5 pt-0.5" aria-hidden="true">
 													<span className="typing-dot" />
 													<span className="typing-dot typing-dot-delay-1" />
 													<span className="typing-dot typing-dot-delay-2" />
 												</div>
-												<p className="truncate text-xs font-medium leading-none text-[var(--text-secondary)]">
+												<p className="truncate text-xs font-medium leading-none text-md-on-surface-variant">
 													{typingUsers.length === 1 ? (
 														<>
-															<span className="font-semibold text-[var(--text-primary)]">{typingUsers[0].userName}</span> is typing
+															<span className="font-semibold text-md-on-surface">{typingUsers[0].userName}</span> is typing
 														</>
 													) : (
 														<>
-															<span className="font-semibold text-[var(--text-primary)]">
+															<span className="font-semibold text-md-on-surface">
 																{typingUsers.slice(0, -1).map((user) => user.userName).join(', ')}
 															</span>{' '}
 															and{' '}
-															<span className="font-semibold text-[var(--text-primary)]">
+															<span className="font-semibold text-md-on-surface">
 																{typingUsers[typingUsers.length - 1].userName}
 															</span>{' '}
 															are typing
@@ -697,11 +701,11 @@ export function ChatView({
 							)}
 						</>
 					) : (
-						<div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-6 text-center">
-							<p className="text-sm font-semibold text-[var(--text-primary)]">
+						<div className="rounded-md3-lg bg-md-surface-container p-6 text-center">
+							<p className="text-sm font-medium text-md-on-surface">
 								{hasSearched ? 'No matching messages in this room.' : 'No messages yet.'}
 							</p>
-							<p className="mt-1 text-xs text-[var(--text-secondary)]">
+							<p className="mt-1 text-xs text-md-on-surface-variant">
 								{hasSearched ? 'Try a different search phrase.' : 'Start the conversation by sending the first message.'}
 							</p>
 						</div>
@@ -716,17 +720,17 @@ export function ChatView({
 							setShowJumpToLatest(false)
 							scrollMessagesToBottom()
 						}}
-						className="motion-interactive absolute bottom-4 right-4 rounded-full border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-semibold text-[var(--text-primary)] shadow-sm"
+						className="md-state motion-interactive absolute bottom-4 right-4 rounded-full bg-md-secondary-container px-4 py-2 text-xs font-medium text-md-on-secondary-container shadow-md3-2"
 					>
 						Jump to latest
 					</button>
 				)}
 				</div>
 
-				<form onSubmit={onSubmit} className="border-t border-[var(--border)] bg-[var(--bg-surface)] px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
-					<div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-soft)] p-2 shadow-sm">
+				<form onSubmit={onSubmit} className="border-t border-md-outline-variant bg-md-surface px-3 py-3 sm:px-5 sm:py-4 lg:px-6">
+					<div className="rounded-md3-xl bg-md-surface-container-high p-2">
 						<div className="flex items-center gap-1">
-							<button type="button" className="motion-interactive inline-flex min-h-11 items-center rounded-xl p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]" aria-label="add">
+							<button type="button" className="md-state inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-md-on-surface-variant" aria-label="add">
 								<Plus size={18} />
 							</button>
 							<input
@@ -740,7 +744,7 @@ export function ChatView({
 								type="button"
 								onClick={() => fileInputRef.current?.click()}
 								disabled={isSendDisabled || !onUploadMedia}
-								className="motion-interactive inline-flex min-h-11 items-center rounded-xl p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+								className="md-state inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-md-on-surface-variant disabled:pointer-events-none disabled:opacity-40"
 								aria-label="upload image or video"
 							>
 								<ImageIcon size={18} />
@@ -762,7 +766,7 @@ export function ChatView({
 									disabled={isSendDisabled}
 									rows={1}
 									placeholder={`Type your message to ${conversation.name}…`}
-									className="motion-focus min-h-11 w-full resize-none bg-transparent px-2 py-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+									className="min-h-11 w-full resize-none bg-transparent px-2 py-2 text-sm text-md-on-surface outline-none placeholder:text-md-on-surface-variant disabled:cursor-not-allowed disabled:opacity-60"
 								/>
 							</div>
 
@@ -770,36 +774,33 @@ export function ChatView({
 								<button
 									type="button"
 									onClick={() => setIsEmojiOpen((prev) => !prev)}
-									className="motion-interactive inline-flex min-h-11 items-center rounded-xl p-2 text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+									className={`md-state inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 ${isEmojiOpen ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
 									aria-label="emoji"
+									aria-expanded={isEmojiOpen}
 								>
 									<Smile size={18} />
 								</button>
 								{isEmojiOpen && (
-									<div className="motion-popover absolute bottom-12 right-0 z-20 w-52 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-lg">
-										<div className="grid grid-cols-4 gap-1">
-											{emojiOptions.map((emoji) => (
-												<button
-													key={emoji}
-													type="button"
-													onClick={() => onSelectEmoji(emoji)}
-													className="motion-interactive rounded-lg p-2 text-lg hover:bg-[var(--bg-soft)]"
-													aria-label={`insert ${emoji}`}
-												>
-													{emoji}
-												</button>
-											))}
-										</div>
+									<div className="motion-popover absolute bottom-12 right-0 z-20 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-md3-lg bg-md-surface-container-high shadow-md3-3">
+										<Suspense
+											fallback={
+												<div className="flex h-[380px] items-center justify-center text-md-on-surface-variant">
+													<Loader2 className="animate-spin" size={22} aria-label="loading emoji picker" />
+												</div>
+											}
+										>
+											<EmojiPickerPanel isDarkMode={isDarkMode} onSelect={onSelectEmoji} />
+										</Suspense>
 									</div>
 								)}
 							</div>
 							<button
 								type="submit"
 								disabled={isSendDisabled}
-								className="motion-interactive inline-flex min-h-11 items-center rounded-xl bg-[var(--accent)] p-2 text-[var(--bg-page)] shadow-[var(--shadow-accent)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+								className="md-state inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-md-primary text-md-on-primary shadow-md3-1 transition-shadow duration-200 ease-md-standard hover:shadow-md3-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-high active:scale-95 disabled:pointer-events-none disabled:opacity-40"
 								aria-label="send message"
 							>
-								<SendHorizontal size={17} />
+								<SendHorizontal size={18} />
 							</button>
 						</div>
 					</div>
@@ -811,7 +812,7 @@ export function ChatView({
 
 			{isRightPanelOpen && (
 				<aside
-					className="relative hidden shrink-0 border-l border-[var(--border)] bg-[var(--bg-surface-alt)] xl:flex xl:flex-col"
+					className="relative hidden shrink-0 border-l border-[var(--border)] bg-md-surface-container-low xl:flex xl:flex-col"
 					style={{ width: `${rightPanelWidth}px` }}
 				>
 					<div
@@ -830,7 +831,7 @@ export function ChatView({
 							</div>
 
 							<div className="flex-1 overflow-y-auto p-4">
-								<div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+								<div className="rounded-2xl border border-[var(--border)] bg-md-surface p-4">
 									<h4 className="text-sm font-semibold text-[var(--text-primary)]">Details</h4>
 									<div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
 										<p><span className="font-medium text-[var(--text-primary)]">Name:</span> {conversation.name}</p>
@@ -840,7 +841,7 @@ export function ChatView({
 									</div>
 								</div>
 
-								<div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+								<div className="mt-4 rounded-2xl border border-[var(--border)] bg-md-surface p-4">
 									<div className="mb-3 flex items-center justify-between gap-3">
 										<h4 className="text-sm font-semibold text-[var(--text-primary)]">Participants</h4>
 										<span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">{roomMembers.length}</span>
@@ -892,7 +893,7 @@ export function ChatView({
 							</div>
 
 							<div className="flex-1 overflow-y-auto p-4">
-								<form onSubmit={handleUpdateRoomSubmit} className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+								<form onSubmit={handleUpdateRoomSubmit} className="rounded-2xl border border-[var(--border)] bg-md-surface p-4">
 									<h4 className="text-sm font-semibold text-[var(--text-primary)]">Update Group Details</h4>
 									<label className="mt-3 block text-xs font-medium text-[var(--text-secondary)]">
 										Name
@@ -924,7 +925,7 @@ export function ChatView({
 									</div>
 								</form>
 
-								<div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+								<div className="mt-4 rounded-2xl border border-[var(--border)] bg-md-surface p-4">
 									<div className="mb-3 flex items-center justify-between gap-3">
 										<div>
 											<h4 className="text-sm font-semibold text-[var(--text-primary)]">Current Members</h4>
@@ -981,7 +982,7 @@ export function ChatView({
 								</div>
 
 								{!conversation.isGroup && (
-									<div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+									<div className="mt-4 rounded-2xl border border-[var(--border)] bg-md-surface p-4">
 										<div className="mb-3 flex items-center gap-2">
 											<div className="rounded-xl bg-[var(--accent-soft)] p-2 text-[var(--accent)]">
 												<UserPlus size={16} />

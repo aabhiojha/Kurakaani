@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Camera, Mail, ShieldCheck, UserCircle, Users } from 'lucide-react'
+import { Button } from '../ui'
 import { resolveAssetUrl } from '../../lib/config'
 import type { FriendUserResponse } from '../../types/api/friend'
 import type { CurrentUserResponse, SessionState } from '../../types/api/session'
@@ -150,7 +151,7 @@ export function ProfilePage({
 							type="button"
 							onClick={() => fileInputRef.current?.click()}
 							disabled={isUploading || !onUploadProfileImage}
-							className="motion-interactive absolute bottom-1 right-1 rounded-full bg-[var(--bg-surface)] p-1.5 text-[var(--text-secondary)] shadow"
+							className="md-state absolute bottom-1 right-1 rounded-full bg-md-secondary-container p-2 text-md-on-secondary-container shadow-md3-1 active:scale-95 disabled:pointer-events-none disabled:opacity-40"
 							aria-label="profile image"
 						>
 							<Camera size={14} />
@@ -222,7 +223,7 @@ export function ProfilePage({
 									type="text"
 									value={editableUserName}
 									onChange={(event) => setEditableUserName(event.target.value)}
-									className="motion-focus mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+									className="mt-1.5 h-12 w-full rounded-t-md3-sm border-b-2 border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
 								/>
 							</div>
 							<div className="text-sm font-medium text-[var(--text-secondary)]">
@@ -231,7 +232,7 @@ export function ProfilePage({
 									type="email"
 									value={editableEmail}
 									onChange={(event) => setEditableEmail(event.target.value)}
-									className="motion-focus mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+									className="mt-1.5 h-12 w-full rounded-t-md3-sm border-b-2 border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
 								/>
 							</div>
 							<div className="text-sm font-medium text-[var(--text-secondary)]">
@@ -259,15 +260,11 @@ export function ProfilePage({
 								</div>
 							</div>
 							<div className="md:col-span-2 flex items-center justify-end gap-3">
-								{profileSaveError && <p className="text-sm text-red-500">{profileSaveError}</p>}
-								{profileSaveStatus && <p className="text-sm text-[var(--text-secondary)]">{profileSaveStatus}</p>}
-								<button
-									type="submit"
-									disabled={isSavingProfile || !onUpdateProfile}
-									className="motion-interactive rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--bg-page)] disabled:cursor-not-allowed disabled:opacity-70"
-								>
-									{isSavingProfile ? 'Saving…' : 'Save Changes'}
-								</button>
+								{profileSaveError && <p className="text-sm text-md-error">{profileSaveError}</p>}
+								{profileSaveStatus && <p className="text-sm text-md-on-surface-variant">{profileSaveStatus}</p>}
+								<Button type="submit" size="md" isLoading={isSavingProfile} disabled={!onUpdateProfile}>
+									{isSavingProfile ? 'Saving…' : 'Save changes'}
+								</Button>
 							</div>
 						</form>
 					</div>

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { MessageSquare, PanelLeftClose, Plus, Search, Settings, UserPlus, Users } from 'lucide-react'
 import type { ChatSection } from '../../types/chat'
 import { resolveAssetUrl } from '../../lib/config'
+import { cn } from '../../lib/cn'
+import { IconButton } from '../ui'
 
 export type SidebarView = ChatSection | 'people' | 'friend-requests' | 'profile' | 'settings'
 
@@ -14,6 +17,39 @@ type SidebarProps = {
 	className?: string
 	onToggleCollapse?: () => void
 	showCollapseButton?: boolean
+}
+
+type NavItemProps = {
+	icon: ReactNode
+	label: string
+	active: boolean
+	onClick: () => void
+}
+
+/**
+ * MD3 navigation item: a pill-shaped row whose active state is a
+ * secondary-container "indicator" (not a colour swap), with a state-layer on
+ * hover/press. Consolidates six near-identical buttons into one primitive.
+ */
+function NavItem({ icon, label, active, onClick }: NavItemProps) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			aria-current={active ? 'page' : undefined}
+			className={cn(
+				'md-state flex min-h-11 w-full items-center gap-3 rounded-full px-4 py-2.5 text-sm',
+				'transition-colors duration-200 ease-md-standard',
+				'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-low',
+				active
+					? 'bg-md-secondary-container font-medium text-md-on-secondary-container'
+					: 'font-medium text-md-on-surface-variant',
+			)}
+		>
+			<span className="shrink-0">{icon}</span>
+			<span className="truncate">{label}</span>
+		</button>
+	)
 }
 
 export function Sidebar({
@@ -31,32 +67,21 @@ export function Sidebar({
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
-			if (!newChatMenuRef.current) {
-				return
-			}
-
+			if (!newChatMenuRef.current) return
 			if (!newChatMenuRef.current.contains(event.target as Node)) {
 				setIsNewChatMenuOpen(false)
 			}
 		}
-
 		document.addEventListener('mousedown', handleClickOutside)
-		return () => {
-			document.removeEventListener('mousedown', handleClickOutside)
-		}
+		return () => document.removeEventListener('mousedown', handleClickOutside)
 	}, [])
 
 	useEffect(() => {
 		const handleEscape = (event: KeyboardEvent) => {
-			if (event.key === 'Escape') {
-				setIsNewChatMenuOpen(false)
-			}
+			if (event.key === 'Escape') setIsNewChatMenuOpen(false)
 		}
-
 		document.addEventListener('keydown', handleEscape)
-		return () => {
-			document.removeEventListener('keydown', handleEscape)
-		}
+		return () => document.removeEventListener('keydown', handleEscape)
 	}, [])
 
 	const handleNewChatOption = (section: ChatSection) => {
@@ -66,142 +91,109 @@ export function Sidebar({
 
 	const profileAvatarUrl = resolveAssetUrl(currentUserProfileImageUrl)
 	const profileName = (currentUserName ?? 'Profile').trim() || 'Profile'
-	const profileInitials = profileName
-		.split(' ')
-		.map((part) => part[0]?.toUpperCase())
-		.filter(Boolean)
-		.slice(0, 2)
-		.join('') || 'PR'
+	const profileInitials =
+		profileName
+			.split(' ')
+			.map((part) => part[0]?.toUpperCase())
+			.filter(Boolean)
+			.slice(0, 2)
+			.join('') || 'PR'
+
+	const profileActive = activeView === 'profile'
 
 	return (
-		<aside className={`motion-enter w-full shrink-0 border-r border-[var(--nav-border)] bg-[var(--nav-bg)] px-4 py-5 shadow-[var(--nav-shadow)] md:w-[280px] lg:w-[248px] ${className}`}>
+		<aside
+			className={cn(
+				'motion-enter flex w-full shrink-0 flex-col bg-md-surface-container-low px-3 py-5 md:w-[280px] lg:w-[248px]',
+				className,
+			)}
+		>
 			<div className="flex h-full flex-col">
-				<div className="mb-7 px-1">
-					<div className="flex items-center justify-between gap-2">
-						<div className="flex items-center gap-2">
-							<div className="text-2xl font-semibold tracking-tight text-[var(--nav-text-primary)]">Kurakaani</div>
-							<span className="h-2.5 w-2.5 rounded-full bg-[var(--status-online)]" aria-label="online" />
-						</div>
-						{showCollapseButton && onToggleCollapse && (
-							<button
-								type="button"
-								onClick={onToggleCollapse}
-								className="motion-interactive inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--nav-border)] bg-[var(--nav-surface)] px-3 text-[var(--nav-text-secondary)] hover:text-[var(--nav-text-primary)]"
-								aria-label="collapse sidebar"
-							>
-								<PanelLeftClose size={16} />
-							</button>
-						)}
+				<div className="mb-6 flex items-center justify-between gap-2 px-3">
+					<div className="flex items-center gap-2">
+						<span className="text-2xl font-medium tracking-tight text-md-on-surface">Kurakaani</span>
+						<span className="h-2.5 w-2.5 rounded-full bg-[var(--status-online)]" aria-label="online" />
 					</div>
+					{showCollapseButton && onToggleCollapse && (
+						<IconButton
+							size="sm"
+							variant="standard"
+							label="Collapse sidebar"
+							icon={<PanelLeftClose size={18} />}
+							onClick={onToggleCollapse}
+						/>
+					)}
 				</div>
 
-				<p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.11em] text-[var(--nav-text-muted)]">Navigation</p>
-				<nav className="space-y-2">
+				<p className="mb-2 px-4 text-[11px] font-medium uppercase tracking-[0.11em] text-md-outline">
+					Navigation
+				</p>
+				<nav className="space-y-1">
+					<NavItem icon={<Users size={18} />} label="Groups" active={activeView === 'groups'} onClick={() => onSectionChange('groups')} />
+					<NavItem icon={<MessageSquare size={18} />} label="Direct Messages" active={activeView === 'direct'} onClick={() => onSectionChange('direct')} />
+					<NavItem icon={<Search size={18} />} label="Find People" active={activeView === 'people'} onClick={() => onSectionChange('people')} />
+					<NavItem icon={<UserPlus size={18} />} label="Friend Requests" active={activeView === 'friend-requests'} onClick={() => onSectionChange('friend-requests')} />
+					<NavItem icon={<Settings size={18} />} label="Settings" active={activeView === 'settings'} onClick={() => onSectionChange('settings')} />
 					<button
-						onClick={() => onSectionChange('groups')}
-						className={`motion-interactive flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-							activeView === 'groups'
-								? 'bg-[var(--nav-surface)] font-semibold text-[var(--nav-text-primary)] shadow-sm'
-								: 'font-medium text-[var(--nav-text-secondary)] hover:bg-[var(--nav-surface-hover)]'
-						}`}
-					>
-						<Users size={17} />
-						Groups
-					</button>
-					<button
-						onClick={() => onSectionChange('direct')}
-						className={`motion-interactive flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-							activeView === 'direct'
-								? 'bg-[var(--nav-surface)] font-semibold text-[var(--nav-text-primary)] shadow-sm'
-								: 'font-medium text-[var(--nav-text-secondary)] hover:bg-[var(--nav-surface-hover)]'
-						}`}
-					>
-						<MessageSquare size={17} />
-						Direct Messages
-					</button>
-					<button
-						onClick={() => onSectionChange('people')}
-						className={`motion-interactive flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-							activeView === 'people'
-								? 'bg-[var(--nav-surface)] font-semibold text-[var(--nav-text-primary)] shadow-sm'
-								: 'font-medium text-[var(--nav-text-secondary)] hover:bg-[var(--nav-surface-hover)]'
-						}`}
-					>
-						<Search size={17} />
-						Find People
-					</button>
-					<button
-						onClick={() => onSectionChange('friend-requests')}
-						className={`motion-interactive flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-							activeView === 'friend-requests'
-								? 'bg-[var(--nav-surface)] font-semibold text-[var(--nav-text-primary)] shadow-sm'
-								: 'font-medium text-[var(--nav-text-secondary)] hover:bg-[var(--nav-surface-hover)]'
-						}`}
-					>
-						<UserPlus size={17} />
-						Friend Requests
-					</button>
-					<button
-						onClick={() => onSectionChange('settings')}
-						className={`motion-interactive flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-							activeView === 'settings'
-								? 'bg-[var(--nav-surface)] font-semibold text-[var(--nav-text-primary)] shadow-sm'
-								: 'font-medium text-[var(--nav-text-secondary)] hover:bg-[var(--nav-surface-hover)]'
-						}`}
-					>
-						<Settings size={17} />
-						Settings
-					</button>
-					<button
+						type="button"
 						onClick={() => onSectionChange('profile')}
-						className={`motion-interactive flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-							activeView === 'profile'
-								? 'bg-[var(--nav-surface)] font-semibold text-[var(--nav-text-primary)] shadow-sm'
-								: 'font-medium text-[var(--nav-text-secondary)] hover:bg-[var(--nav-surface-hover)]'
-						}`}
+						aria-current={profileActive ? 'page' : undefined}
+						className={cn(
+							'md-state flex min-h-11 w-full items-center gap-3 rounded-full px-3 py-2 text-sm',
+							'transition-colors duration-200 ease-md-standard',
+							'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-low',
+							profileActive
+								? 'bg-md-secondary-container font-medium text-md-on-secondary-container'
+								: 'font-medium text-md-on-surface-variant',
+						)}
 					>
-						<div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--avatar-neutral-bg)] text-[11px] font-semibold text-white">
+						<span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-md-tertiary-container text-[11px] font-semibold text-md-on-tertiary-container">
 							{profileAvatarUrl ? (
 								<img src={profileAvatarUrl} alt={profileName} className="h-full w-full object-cover" />
 							) : (
 								profileInitials
 							)}
-						</div>
+						</span>
 						<span className="truncate">{profileName}</span>
 					</button>
 				</nav>
 
-				<div className="mt-auto space-y-4">
+				<div className="mt-auto pt-4">
 					<div ref={newChatMenuRef} className="relative">
 						{isNewChatMenuOpen && (
-							<div className="motion-popover absolute bottom-full left-0 mb-2 w-full rounded-xl border border-[var(--nav-border)] bg-[var(--nav-surface)] p-2 shadow-lg">
+							<div className="motion-popover absolute bottom-full left-0 mb-2 w-full rounded-md3-md bg-md-surface-container-high p-2 shadow-md3-3">
 								<button
 									type="button"
 									onClick={() => handleNewChatOption('direct')}
-									className="motion-interactive flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--nav-text-primary)] hover:bg-[var(--nav-surface-hover)]"
+									className="md-state flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-left text-sm font-medium text-md-on-surface"
 								>
-									<MessageSquare size={15} />
+									<MessageSquare size={16} />
 									New DM
 								</button>
 								<button
 									type="button"
 									onClick={() => handleNewChatOption('groups')}
-									className="motion-interactive mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[var(--nav-text-primary)] hover:bg-[var(--nav-surface-hover)]"
+									className="md-state mt-1 flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-left text-sm font-medium text-md-on-surface"
 								>
-									<Users size={15} />
+									<Users size={16} />
 									New Group
 								</button>
 							</div>
 						)}
 						<button
+							type="button"
 							onClick={() => setIsNewChatMenuOpen((previous) => !previous)}
-							className="motion-interactive flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--bg-page)] shadow-[var(--shadow-accent)] hover:bg-[var(--accent-strong)]"
+							aria-expanded={isNewChatMenuOpen}
+							className={cn(
+								'md-state flex min-h-14 w-full items-center justify-center gap-2 rounded-md3-md bg-md-tertiary-container px-4 text-sm font-medium text-md-on-tertiary-container',
+								'shadow-md3-1 transition-shadow duration-[240ms] ease-md-standard hover:shadow-md3-2',
+								'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-md-primary focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-low active:scale-95',
+							)}
 						>
-							<Plus size={17} />
+							<Plus size={18} />
 							New Chat
 						</button>
 					</div>
-					{/* <button className="motion-interactive text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"></button> */}
 				</div>
 			</div>
 		</aside>

@@ -232,11 +232,15 @@ function App() {
 		void loadFriendships()
 	}, [clearFriendships, loadFriendships, session?.accessToken])
 
-	// Load room members when the active conversation changes
+	// Load room members only when the *selected room* changes. Depending on the
+	// whole activeConversation object would re-run this on every preview/unread
+	// update (a new object reference per incoming message), refetching the member
+	// list on each message. Keying on the id refetches only on an actual room switch.
+	const activeConversationId = activeConversation?.id
 	useEffect(() => {
-		if (!session?.accessToken || !activeConversation) return
-		void loadRoomMembers(activeConversation.id)
-	}, [activeConversation, loadRoomMembers, session?.accessToken])
+		if (!session?.accessToken || !activeConversationId) return
+		void loadRoomMembers(activeConversationId)
+	}, [activeConversationId, loadRoomMembers, session?.accessToken])
 
 	useEffect(() => {
 		if (!activeConversation?.id) {
@@ -603,6 +607,7 @@ function App() {
 		onRemoveMembersFromRoom: handleRemoveMembersFromRoom,
 		onRetryMessage: handleRetryMessage,
 		isSendDisabled: Boolean(session?.accessToken) && !isSocketConnected,
+		isDarkMode,
 	} as const
 
 	const sharedRecentPanelProps = {
@@ -702,9 +707,9 @@ function App() {
 	}
 
 	return (
-		<div data-theme={isDarkMode ? 'dark' : 'light'} className="h-screen min-h-screen overflow-hidden bg-[var(--bg-page)] p-0 text-[var(--text-primary)] antialiased sm:p-2 lg:p-3">
+		<div data-theme={isDarkMode ? 'dark' : 'light'} className="h-screen min-h-screen overflow-hidden bg-md-background p-0 text-md-on-surface antialiased sm:p-2 lg:p-3">
 			<NotificationToasts notifications={notifications} onDismiss={dismissNotification} />
-			<div className="relative flex h-full min-w-0 overflow-hidden rounded-none bg-[var(--bg-surface)] shadow-[var(--shadow-pane)] sm:rounded-[26px]">
+			<div className="relative flex h-full min-w-0 overflow-hidden rounded-none bg-md-surface shadow-md3-1 sm:rounded-md3-2xl">
 				{isDesktop && !isDesktopSidebarCollapsed && (
 					<Sidebar
 						activeView={activeView}
@@ -722,7 +727,7 @@ function App() {
 					<button
 						type="button"
 						onClick={() => setIsDesktopSidebarCollapsed(false)}
-						className="motion-interactive absolute left-4 top-4 z-30 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm font-medium text-[var(--text-primary)] shadow-sm"
+						className="md-state motion-interactive absolute left-4 top-4 z-30 inline-flex min-h-11 items-center gap-2 rounded-full bg-md-surface-container px-4 text-sm font-medium text-md-on-surface shadow-md3-1"
 						aria-label="expand sidebar"
 					>
 						<LayoutPanelLeft size={16} />
@@ -731,7 +736,7 @@ function App() {
 				)}
 
 				{!isDesktop && isSidebarDrawerOpen && (
-					<div className="absolute inset-0 z-40 bg-black/35" onClick={() => setIsSidebarDrawerOpen(false)}>
+					<div className="absolute inset-0 z-40 bg-md-inverse-surface/40 backdrop-blur-sm" onClick={() => setIsSidebarDrawerOpen(false)}>
 						<div className="h-full w-fit" onClick={(e) => e.stopPropagation()}>
 							<Sidebar
 								activeView={activeView}
@@ -739,7 +744,7 @@ function App() {
 								onNewChat={handleNewChat}
 								currentUserName={sidebarUserName}
 								currentUserProfileImageUrl={sidebarUserProfileImageUrl}
-								className="h-full max-w-[84vw]"
+								className="h-full max-w-[84vw] rounded-r-md3-lg shadow-md3-3"
 							/>
 						</div>
 					</div>
@@ -747,22 +752,24 @@ function App() {
 
 				<div className="flex min-w-0 flex-1 flex-col overflow-hidden">
 					{!isDesktop && (
-						<header className="flex min-h-12 items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 sm:px-4">
+						<header className="flex min-h-14 items-center justify-between border-b border-md-outline-variant bg-md-surface px-3 py-2 sm:px-4">
 							<button
 								type="button"
 								onClick={() => setIsSidebarDrawerOpen((prev) => !prev)}
-								className="motion-interactive inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 text-sm font-medium text-[var(--text-primary)]"
+								className="md-state motion-interactive inline-flex min-h-11 items-center gap-2 rounded-full bg-md-surface-container px-4 text-sm font-medium text-md-on-surface"
 							>
 								{isSidebarDrawerOpen ? <PanelLeftClose size={16} /> : <LayoutPanelLeft size={16} />}
 								Menu
 							</button>
 
 							{isMobile && isChatSection(activeView) && (
-								<div className="flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] p-1">
+								/* MD3 segmented (single-select) control */
+								<div className="flex items-center rounded-full border border-md-outline p-0.5">
 									<button
 										type="button"
 										onClick={() => setMobilePane('list')}
-										className={`motion-interactive inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold ${mobilePane === 'list' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
+										aria-pressed={mobilePane === 'list'}
+										className={`md-state inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors duration-200 ${mobilePane === 'list' ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
 									>
 										<MessagesSquare size={14} />
 										Chats
@@ -770,7 +777,8 @@ function App() {
 									<button
 										type="button"
 										onClick={() => setMobilePane('detail')}
-										className={`motion-interactive inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold ${mobilePane === 'detail' ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--text-secondary)]'}`}
+										aria-pressed={mobilePane === 'detail'}
+										className={`md-state inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors duration-200 ${mobilePane === 'detail' ? 'bg-md-secondary-container text-md-on-secondary-container' : 'text-md-on-surface-variant'}`}
 									>
 										<MessageSquare size={14} />
 										Chat

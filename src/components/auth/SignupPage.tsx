@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { Button, TextField } from '../ui'
+import { AuthShell, AuthLink } from './AuthShell'
 
 type AuthActionResult = { ok: true; message?: string } | { ok: false; error: string }
 
@@ -9,22 +11,18 @@ type SignupPageProps = {
 	onSwitchToLogin: () => void
 }
 
-export function SignupPage({
-	isSubmitting,
-	backendStatus,
-	onRegister,
-	onSwitchToLogin,
-}: SignupPageProps) {
+export function SignupPage({ isSubmitting, backendStatus, onRegister, onSwitchToLogin }: SignupPageProps) {
 	const [username, setUsername] = useState('')
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
 	const [confirmPassword, setConfirmPassword] = useState('')
 	const [feedback, setFeedback] = useState<string | null>(null)
 
+	const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword
+
 	const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
 		setFeedback(null)
-
 		const result = await onRegister(username.trim(), email.trim(), password, confirmPassword)
 		if (result.ok) {
 			setPassword('')
@@ -32,82 +30,60 @@ export function SignupPage({
 			setFeedback(result.message ?? 'Registration successful.')
 			return
 		}
-
 		setFeedback(result.error)
 	}
 
 	return (
-		<section className="flex min-h-screen items-center justify-center bg-[var(--bg-page)] p-4 text-[var(--text-primary)] sm:p-6">
-			<div className="w-full max-w-lg rounded-3xl border border-[var(--border)] bg-[var(--bg-surface)] p-4 shadow-sm sm:p-6">
-				<div className="mb-5">
-					<p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Get Started</p>
-					<h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Create Your Account</h1>
-					<p className="mt-2 text-sm text-[var(--text-secondary)]">Sign up to join Kurakaani and start chatting.</p>
-					<p className="mt-2 text-xs text-[var(--text-muted)]">{backendStatus}</p>
-					{feedback && <p className="mt-2 text-sm text-[var(--text-secondary)]">{feedback}</p>}
-				</div>
-
-				<form onSubmit={handleSubmit} className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-surface-alt)] p-4">
-					<label className="block text-xs font-medium text-[var(--text-secondary)]">
-						Username
-						<input
-							type="text"
-							required
-							value={username}
-							onChange={(event) => setUsername(event.target.value)}
-							className="motion-focus mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-						/>
-					</label>
-					<label className="block text-xs font-medium text-[var(--text-secondary)]">
-						Email
-						<input
-							type="email"
-							required
-							value={email}
-							onChange={(event) => setEmail(event.target.value)}
-							className="motion-focus mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-						/>
-					</label>
-					<label className="block text-xs font-medium text-[var(--text-secondary)]">
-						Password
-						<input
-							type="password"
-							required
-							value={password}
-							onChange={(event) => setPassword(event.target.value)}
-							className="motion-focus mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-						/>
-					</label>
-					<label className="block text-xs font-medium text-[var(--text-secondary)]">
-						Confirm Password
-						<input
-							type="password"
-							required
-							value={confirmPassword}
-							onChange={(event) => setConfirmPassword(event.target.value)}
-							className="motion-focus mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-3 py-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-						/>
-					</label>
-					<button
-						type="submit"
-						disabled={isSubmitting}
-						className="motion-interactive w-full rounded-xl bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-[var(--bg-page)] hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-70"
-					>
-						{isSubmitting ? 'Submitting...' : 'Create Account'}
-					</button>
-				</form>
-
-				<p className="mt-4 text-center text-sm text-[var(--text-secondary)]">
-					Already have an account?{' '}
-					<button
-						type="button"
-						onClick={onSwitchToLogin}
-						className="font-semibold text-[var(--accent)] hover:underline"
-					>
-						Login
-					</button>
+		<AuthShell
+			eyebrow="Get started"
+			title="Create your account"
+			subtitle="Sign up to join Kurakaani and start chatting."
+			backendStatus={backendStatus}
+			feedback={feedback}
+			footer={
+				<p className="text-center text-sm text-md-on-surface-variant">
+					Already have an account? <AuthLink onClick={onSwitchToLogin}>Login</AuthLink>
 				</p>
-			</div>
-		</section>
+			}
+		>
+			<form onSubmit={handleSubmit} className="space-y-4">
+				<TextField
+					label="Username"
+					type="text"
+					autoComplete="username"
+					required
+					value={username}
+					onChange={(event) => setUsername(event.target.value)}
+				/>
+				<TextField
+					label="Email"
+					type="email"
+					autoComplete="email"
+					required
+					value={email}
+					onChange={(event) => setEmail(event.target.value)}
+				/>
+				<TextField
+					label="Password"
+					type="password"
+					autoComplete="new-password"
+					required
+					value={password}
+					onChange={(event) => setPassword(event.target.value)}
+				/>
+				<TextField
+					label="Confirm password"
+					type="password"
+					autoComplete="new-password"
+					required
+					value={confirmPassword}
+					onChange={(event) => setConfirmPassword(event.target.value)}
+					error={passwordsMismatch ? 'Passwords do not match' : undefined}
+				/>
+				<Button type="submit" fullWidth size="lg" isLoading={isSubmitting} disabled={passwordsMismatch}>
+					{isSubmitting ? 'Creating account…' : 'Create account'}
+				</Button>
+			</form>
+		</AuthShell>
 	)
 }
