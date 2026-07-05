@@ -32,7 +32,7 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
              Select new com.abhishekojha.kurakanimonolith.modules.room.dto.roomList.RoomListDto(
                  r.id,
                  CASE 
-                     WHEN r.type = 'DM' THEN (
+                     WHEN r.type = com.abhishekojha.kurakanimonolith.modules.room.model.RoomType.DM THEN (
                          SELECT u.userName FROM RoomMember rm2 JOIN rm2.user u 
                          WHERE rm2.room.id = r.id AND u.id != :userId
                      )

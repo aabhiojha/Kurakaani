@@ -117,7 +117,9 @@ public class RoomServiceImpl implements RoomService {
         Optional<Room> existingDm = roomRepository.findExistingDm(user1.getId(), user2.getId());
         if (existingDm.isPresent()) {
             log.info("event=create_dm_skipped reason=already_exists roomId={} user1Id={} user2Id={}", existingDm.get().getId(), user1.getId(), user2.getId());
-            return roomMapper.toDto(existingDm.get());
+            RoomDto dto = roomMapper.toDto(existingDm.get());
+            dto.setName(user2.getUserName());
+            return dto;
         }
 
         Room room = new Room();
