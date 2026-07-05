@@ -47,7 +47,7 @@ export function FriendRequestsPage({
 	}
 
 	return (
-		<section className="motion-enter flex min-w-0 flex-1 flex-col overflow-y-auto bg-md-surface p-4 sm:p-6 lg:p-10">
+		<section className="motion-slide-in-right flex min-w-0 flex-1 flex-col overflow-y-auto bg-md-surface p-4 sm:p-6 lg:p-10">
 			<div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
 				{/* Header */}
 				<div className="flex flex-col gap-2 border-b border-md-outline-variant pb-6">

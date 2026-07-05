@@ -615,8 +615,8 @@ export function ChatView({
 
 	if (!conversation) {
 		return (
-			<section className="motion-enter motion-stagger-2 flex min-w-0 flex-1 flex-col items-center justify-center bg-md-surface">
-				<div className="text-center">
+			<section className="motion-slide-in-right motion-stagger-2 flex min-w-0 flex-1 flex-col items-center justify-center bg-md-surface">
+				<div className="flex flex-col items-center gap-4 text-center">
 					<h2 className="text-lg font-semibold text-[var(--text-primary)]">Click on a group to start chatting</h2>
 					<p className="text-[var(--text-secondary)]">Pick a group from the list to open the conversation.</p>
 				</div>
@@ -625,7 +625,7 @@ export function ChatView({
 	}
 
 	return (
-		<section ref={layoutRef} className="motion-enter motion-stagger-2 flex min-h-0 min-w-0 flex-1 bg-md-surface">
+		<section ref={layoutRef} className="motion-slide-in-right motion-stagger-2 flex min-h-0 min-w-0 flex-1 bg-md-surface">
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<header className="flex items-center justify-between border-b border-md-outline-variant px-3 py-3 sm:px-5 lg:px-6">
 					<div className="flex items-center gap-3">

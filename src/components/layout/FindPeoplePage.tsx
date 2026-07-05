@@ -136,8 +136,8 @@ export function FindPeoplePage({ currentUserId, friendships, onSendFriendRequest
 	}
 
 	return (
-		<section className="motion-enter flex min-w-0 flex-1 overflow-y-auto bg-md-surface-container-low p-2 sm:p-3 lg:p-4">
-			<Card className="mx-auto w-full max-w-4xl p-4 sm:p-5">
+		<section className="motion-slide-in-right flex min-w-0 flex-1 overflow-y-auto bg-md-surface-container-low p-2 sm:p-3 lg:p-4">
+			<Card className="mx-auto flex w-full max-w-5xl flex-col p-4 sm:p-5 lg:p-6">
 				<div className="mb-3 border-b border-md-outline-variant pb-3">
 					<p className="text-xs font-medium uppercase tracking-[0.12em] text-md-primary">Network</p>
 					<h2 className="mt-1 text-xl font-medium tracking-tight text-md-on-surface">Find people</h2>

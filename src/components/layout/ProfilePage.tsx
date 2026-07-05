@@ -115,7 +115,7 @@ export function ProfilePage({
 	}
 
 	return (
-		<section className="motion-enter flex min-w-0 flex-1 flex-col overflow-y-auto bg-md-surface p-4 sm:p-6 lg:p-10">
+		<section className="motion-slide-in-right flex min-w-0 flex-1 flex-col overflow-y-auto bg-md-surface p-4 sm:p-6 lg:p-10">
 			<div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-8">
 				{/* Profile Header */}
 				<div className="flex w-full flex-col items-center rounded-3xl bg-md-surface-container p-8 shadow-sm">

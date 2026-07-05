@@ -29,7 +29,7 @@ export function SettingsPage({
 	onLogout,
 }: SettingsPageProps) {
 	return (
-		<section className="flex min-w-0 flex-1 overflow-y-auto bg-md-surface-container-low p-3 text-md-on-surface sm:p-4 lg:p-6">
+		<section className="motion-slide-in-right flex min-w-0 flex-1 overflow-y-auto bg-md-surface-container-low p-3 text-md-on-surface sm:p-4 lg:p-6">
 			<div className="mx-auto w-full max-w-4xl space-y-6">
 				<div>
 					<p className="text-xs font-medium uppercase tracking-[0.12em] text-md-primary">Workspace preferences</p>
