@@ -30,7 +30,12 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
-    private Date extractExpiration(String token) {
+    /** JWT ID claim, used as the key for the Redis revocation denylist. */
+    public String extractJti(String token) {
+        return extractAllClaims(token).getId();
+    }
+
+    public Date extractExpiration(String token) {
         return extractAllClaims(token).getExpiration();
     }
 
