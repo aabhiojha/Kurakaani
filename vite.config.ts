@@ -33,6 +33,11 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/storage': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/storage/, ''),
+      },
     },
   },
 })

@@ -19,7 +19,14 @@ export const resolveAssetUrl = (value?: string | null) => {
 		const resolved = new URL(value, runtimeBase)
 
 		if (LOCAL_HOSTS.has(resolved.hostname) && !LOCAL_HOSTS.has(window.location.hostname)) {
+			if (resolved.port === '8000') {
+				// Proxy RustFS / S3 through Vite proxy for mobile access
+				resolved.pathname = '/storage' + resolved.pathname
+				resolved.port = window.location.port
+			}
 			resolved.hostname = window.location.hostname
+			// Use the ngrok/external protocol
+			resolved.protocol = window.location.protocol
 		}
 
 		return resolved.toString()
