@@ -232,8 +232,10 @@ public class MessageServiceImpl implements MessageService {
             declaredType = MessageType.IMAGE;
         } else if (contentType.startsWith("video/")) {
             declaredType = MessageType.VIDEO;
+        } else if (contentType.startsWith("audio/")) {
+            declaredType = MessageType.AUDIO;
         } else {
-            throw new BadRequestException("Only image and video files are supported.");
+            throw new BadRequestException("Only image, video, and audio files are supported.");
         }
 
         MessageType sniffedType = sniffMediaType(file);
@@ -264,7 +266,7 @@ public class MessageServiceImpl implements MessageService {
 
         // Videos
         if (matchesAt(header, 4, 0x66, 0x74, 0x79, 0x70)) return MessageType.VIDEO;               // ISO-BMFF (MP4/MOV): '....ftyp'
-        if (startsWith(header, 0x1A, 0x45, 0xDF, 0xA3)) return MessageType.VIDEO;                 // Matroska/WebM (EBML)
+        if (startsWith(header, 0x1A, 0x45, 0xDF, 0xA3)) return (file.getContentType() != null && file.getContentType().startsWith("audio/")) ? MessageType.AUDIO : MessageType.VIDEO;                 // Matroska/WebM (EBML)
 
         return null;
     }
