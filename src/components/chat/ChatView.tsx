@@ -840,12 +840,12 @@ export function ChatView({
 
 							<div className="relative min-h-11 flex-1 flex items-center">
 								{isRecording ? (
-									<div className="flex w-full items-center justify-between px-4 text-md-error font-medium animate-pulse">
+									<div className="motion-enter-soft flex w-full items-center justify-between px-4 text-md-error font-medium">
 										<div className="flex items-center gap-2">
-											<Mic size={18} />
+											<Mic size={18} className="animate-pulse" />
 											<span>Recording...</span>
 										</div>
-										<span>{formatRecordingTime(recordingTime)}</span>
+										<span className="font-mono tabular-nums">{formatRecordingTime(recordingTime)}</span>
 									</div>
 								) : (
 									<textarea
@@ -861,8 +861,9 @@ export function ChatView({
 										onKeyDown={onKeyDown}
 										disabled={isSendDisabled}
 										rows={1}
+										style={{ fieldSizing: 'content', minHeight: '44px', maxHeight: '160px' } as any}
 										placeholder={`Type your message to ${conversation.name}…`}
-										className="min-h-11 w-full resize-none bg-transparent px-2 py-2 text-sm text-md-on-surface outline-none placeholder:text-md-on-surface-variant disabled:cursor-not-allowed disabled:opacity-60"
+										className="motion-enter-soft w-full resize-none bg-transparent px-2 py-3 text-sm text-md-on-surface outline-none transition-all duration-200 ease-md-standard placeholder:text-md-on-surface-variant disabled:cursor-not-allowed disabled:opacity-60"
 									/>
 								)}
 							</div>
@@ -908,7 +909,7 @@ export function ChatView({
 									type="button"
 									disabled={isSendDisabled}
 									onClick={isRecording ? stopRecording : startRecording}
-									className={`md-state inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-md3-1 transition-all duration-200 ease-md-standard hover:shadow-md3-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-high active:scale-95 disabled:pointer-events-none disabled:opacity-40 ${isRecording ? 'bg-md-error text-md-on-error hover:scale-110' : 'bg-md-primary text-md-on-primary'}`}
+									className={`md-state inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full shadow-md3-1 transition-all duration-200 ease-md-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-md-surface-container-high active:scale-95 disabled:pointer-events-none disabled:opacity-40 ${isRecording ? 'bg-md-error text-md-on-error animate-recording' : 'bg-md-primary text-md-on-primary hover:shadow-md3-2'}`}
 									aria-label={isRecording ? "stop recording" : "record voice message"}
 								>
 									{isRecording ? <Square size={18} /> : <Mic size={18} />}

@@ -237,7 +237,7 @@ export function RecentMessagesPanel({
 			</div>
 
 			<div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2">
-				{visibleConversations.map((conversation) => {
+				{visibleConversations.map((conversation, index) => {
 					const avatarUrl = resolveAssetUrl(conversation.avatarImageUrl)
 					const unreadCount = conversation.unreadCount ?? 0
 					const isSelected = conversation.id === selectedConversationId
@@ -246,8 +246,9 @@ export function RecentMessagesPanel({
 						<article
 							key={conversation.id}
 							onClick={() => onSelectConversation(conversation.id)}
+							style={{ animationDelay: `${index * 35}ms` }}
 							className={cn(
-								'md-state flex min-h-11 cursor-pointer gap-3 rounded-md3-md px-3 py-3',
+								'motion-message motion-interactive md-state flex min-h-11 cursor-pointer gap-3 rounded-md3-md px-3 py-3',
 								'transition-colors duration-200 ease-md-standard',
 								isSelected
 									? 'bg-md-secondary-container'
