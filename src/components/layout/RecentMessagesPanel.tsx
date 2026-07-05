@@ -3,10 +3,9 @@ import type { FormEvent } from 'react'
 import { Plus, Search } from 'lucide-react'
 import type { ChatSection, Conversation } from '../../types/chat'
 import type { FriendUserResponse } from '../../types/api/friend'
-import { searchMessagesAcrossRooms } from '../../services/roomService'
 import { resolveAssetUrl } from '../../lib/config'
 import { cn } from '../../lib/cn'
-import { Button, TextField } from '../ui'
+import { Button } from '../ui'
 
 type RecentMessagesPanelProps = {
 	section: ChatSection
@@ -15,7 +14,6 @@ type RecentMessagesPanelProps = {
 	friends?: FriendUserResponse[]
 	onSelectConversation: (conversationId: number) => void
 	onCreateDirect: (name: string, description: string) => Promise<{ ok: boolean; error?: string }>
-	onCreateGroup: (name: string, description: string) => Promise<{ ok: boolean; error?: string }>
 	newChatTrigger: number
 	className?: string
 }
@@ -27,21 +25,17 @@ export function RecentMessagesPanel({
 	friends = [],
 	onSelectConversation,
 	onCreateDirect,
-	onCreateGroup,
 	newChatTrigger,
 	className = '',
 }: RecentMessagesPanelProps) {
 	const [createName, setCreateName] = useState('')
-	const [createDescription, setCreateDescription] = useState('')
 	const [isCreatingChat, setIsCreatingChat] = useState(false)
 	const [createChatStatus, setCreateChatStatus] = useState<string | null>(null)
 	const [isComposerOpen, setIsComposerOpen] = useState(false)
 	const [searchQuery, setSearchQuery] = useState('')
 	const [matchedRoomIds, setMatchedRoomIds] = useState<Set<number> | null>(null)
-	const [isSearchingMessages, setIsSearchingMessages] = useState(false)
-	const [searchStatus, setSearchStatus] = useState<string | null>(null)
-	const headerTitle = section === 'groups' ? 'Groups' : 'Recent Messages'
-	const searchPlaceholder = section === 'groups' ? 'Search messages in groups…' : 'Search discussions…'
+	const headerTitle = 'Recent Messages'
+	const searchPlaceholder = 'Search discussions…'
 
 	useEffect(() => {
 		if (newChatTrigger > 0) {
@@ -51,71 +45,13 @@ export function RecentMessagesPanel({
 	}, [newChatTrigger])
 
 	useEffect(() => {
-		if (section !== 'groups') {
-			const timeoutId = window.setTimeout(() => {
-				setMatchedRoomIds(null)
-				setSearchStatus(null)
-				setIsSearchingMessages(false)
-			}, 0)
-			return () => window.clearTimeout(timeoutId)
-		}
-
-		const trimmed = searchQuery.trim()
-		if (!trimmed) {
-			const timeoutId = window.setTimeout(() => {
-				setMatchedRoomIds(null)
-				setSearchStatus(null)
-				setIsSearchingMessages(false)
-			}, 0)
-			return () => window.clearTimeout(timeoutId)
-		}
-
-		let disposed = false
-
 		const timeoutId = window.setTimeout(() => {
-			if (disposed) return
-
-			setIsSearchingMessages(true)
-			setSearchStatus(null)
-
-			searchMessagesAcrossRooms(trimmed)
-				.then((results) => {
-					if (disposed) return
-					const groupedRoomIds = new Set(
-						conversations.filter((conversation) => conversation.isGroup).map((conversation) => conversation.id),
-					)
-					const matched = new Set(
-						results.map((message) => message.roomId).filter((roomId) => groupedRoomIds.has(roomId)),
-					)
-					setMatchedRoomIds(matched)
-					setSearchStatus(
-						matched.size > 0
-							? `${matched.size} group${matched.size === 1 ? '' : 's'} with matching messages.`
-							: 'No matching messages found in groups.',
-					)
-				})
-				.catch((error: unknown) => {
-					if (disposed) return
-					setMatchedRoomIds(new Set())
-					setSearchStatus(error instanceof Error ? error.message : 'Failed to search group messages.')
-				})
-				.finally(() => {
-					if (!disposed) setIsSearchingMessages(false)
-				})
-		}, 250)
-
-		return () => {
-			disposed = true
-			window.clearTimeout(timeoutId)
-		}
+			setMatchedRoomIds(null)
+		}, 0)
+		return () => window.clearTimeout(timeoutId)
 	}, [section, searchQuery, conversations])
 
 	const visibleConversations = useMemo(() => {
-		if (section === 'groups' && searchQuery.trim()) {
-			if (matchedRoomIds === null) return []
-			return conversations.filter((conversation) => matchedRoomIds.has(conversation.id))
-		}
-
 		const lowered = searchQuery.trim().toLowerCase()
 		if (!lowered) return conversations
 
@@ -129,27 +65,20 @@ export function RecentMessagesPanel({
 	const handleCreateChat = async (event: FormEvent) => {
 		event.preventDefault()
 		const trimmedName = createName.trim()
-		const trimmedDescription = section === 'groups' ? createDescription.trim() : ''
 
 		if (!trimmedName) {
-			setCreateChatStatus(section === 'groups' ? 'Group name is required.' : 'Please select a friend.')
+			setCreateChatStatus('Please select a friend.')
 			return
 		}
 
 		setIsCreatingChat(true)
-		const result =
-			section === 'groups'
-				? await onCreateGroup(trimmedName, trimmedDescription)
-				: await onCreateDirect(trimmedName, '')
+		const result = await onCreateDirect(trimmedName, '')
 		setIsCreatingChat(false)
 
 		if (result.ok) {
 			setCreateName('')
-			setCreateDescription('')
 			setIsComposerOpen(false)
-			setCreateChatStatus(
-				section === 'groups' ? 'Group created successfully.' : 'Direct chat created successfully.',
-			)
+			setCreateChatStatus('Direct chat created successfully.')
 			return
 		}
 
@@ -157,15 +86,21 @@ export function RecentMessagesPanel({
 	}
 
 	return (
-		<section
+		<aside
 			className={cn(
-				'motion-enter motion-stagger-1 flex w-full min-w-0 shrink-0 flex-col bg-md-surface md:w-[340px] lg:w-[320px]',
+				'motion-enter motion-stagger-1 flex w-full flex-col border-r border-md-outline-variant bg-md-surface sm:w-80 lg:w-[22rem]',
 				className,
 			)}
 		>
 			<div className="border-b border-md-outline-variant px-4 py-4 sm:px-5">
 				<div className="mb-4 flex items-center justify-between">
 					<h2 className="text-xl font-medium tracking-tight text-md-on-surface">{headerTitle}</h2>
+					<button
+						onClick={() => setIsComposerOpen(!isComposerOpen)}
+						className="flex h-10 w-10 items-center justify-center rounded-full bg-md-secondary-container text-md-on-secondary-container transition-colors hover:bg-md-secondary-container/80"
+					>
+						<Plus size={20} />
+					</button>
 				</div>
 
 				<label className="relative block">
@@ -182,39 +117,27 @@ export function RecentMessagesPanel({
 					/>
 				</label>
 
-				{section === 'groups' && searchQuery.trim() && (
-					<p className="mt-2 px-1 text-xs text-md-on-surface-variant">
-						{isSearchingMessages ? 'Searching messages…' : searchStatus ?? ' '}
-					</p>
-				)}
-
 				{isComposerOpen && (
-					<form
-						onSubmit={handleCreateChat}
-						className="motion-enter-soft mt-3 rounded-md3-md bg-md-surface-container p-4"
-					>
-						<div className="mb-3 flex items-center gap-2 text-sm font-medium text-md-on-surface">
-							<Plus size={16} />
-							{section === 'groups' ? 'Create Group' : 'Create Direct Chat'}
+					<div className="motion-enter-soft mt-3 rounded-md3-md bg-md-surface-container p-4">
+						<div className="mb-4 flex items-center justify-between">
+							<h3 className="flex-1 text-[17px] font-medium text-md-on-surface">Create Direct Chat</h3>
+							<button
+								type="button"
+								onClick={() => {
+									setIsComposerOpen(false)
+									setCreateChatStatus(null)
+								}}
+								className="md-state flex h-8 w-8 items-center justify-center rounded-full text-md-on-surface-variant"
+								aria-label="Cancel"
+							>
+								<Plus size={18} className="rotate-45" />
+							</button>
 						</div>
-						{section === 'groups' ? (
-							<div className="space-y-3">
-								<TextField
-									label="Group name"
-									value={createName}
-									onChange={(event) => setCreateName(event.target.value)}
-								/>
-								<TextField
-									label="Description (optional)"
-									value={createDescription}
-									onChange={(event) => setCreateDescription(event.target.value)}
-								/>
-							</div>
-						) : (
+						<form onSubmit={handleCreateChat} className="flex flex-col gap-3">
 							<select
 								value={createName}
 								onChange={(event) => setCreateName(event.target.value)}
-								className="mb-2 h-12 w-full rounded-t-md3-sm border-b-2 border-md-outline bg-md-surface-container-highest px-4 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
+								className="h-12 w-full rounded-md3-sm border border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
 							>
 								<option value="">Select a friend…</option>
 								{friends.map((friend) => (
@@ -223,7 +146,6 @@ export function RecentMessagesPanel({
 									</option>
 								))}
 							</select>
-						)}
 						<div className="mt-3 flex items-center justify-between gap-2">
 							<Button type="submit" size="sm" isLoading={isCreatingChat}>
 								{isCreatingChat ? 'Creating…' : 'Create'}
@@ -233,6 +155,7 @@ export function RecentMessagesPanel({
 							)}
 						</div>
 					</form>
+					</div>
 				)}
 			</div>
 
@@ -321,12 +244,10 @@ export function RecentMessagesPanel({
 				})}
 				{visibleConversations.length === 0 && (
 					<div className="px-3 py-10 text-center text-sm text-md-on-surface-variant">
-						{section === 'groups' && searchQuery.trim()
-							? 'No groups matched your message search.'
-							: 'No conversations found.'}
+						No conversations found.
 					</div>
 				)}
 			</div>
-		</section>
+		</aside>
 	)
 }

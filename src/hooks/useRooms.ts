@@ -287,7 +287,7 @@ export function useRooms(
 		if (!session?.accessToken) {
 			const id = Date.now()
 			addLocalConversation(buildConversation(id, name, description, true), `Room "${name}" created.`)
-			setActiveView('groups')
+			setActiveView('chats')
 			setBackendStatus('Group created locally. Sign in to create groups on backend.')
 			return { ok: true as const }
 		}
@@ -295,7 +295,7 @@ export function useRooms(
 			const room = (await createGroupRoom({ name, description, type: 'GROUP' })) as { id?: number }
 			const id = typeof room?.id === 'number' ? room.id : Date.now()
 			addLocalConversation(buildConversation(id, name, description, true), `Room "${name}" created.`)
-			setActiveView('groups')
+			setActiveView('chats')
 			setBackendStatus(`Group "${name}" created on backend.`)
 			return { ok: true as const }
 		} catch {
@@ -347,7 +347,7 @@ export function useRooms(
 					chats: prev.chats.map(c => c.id === conversationId ? { ...c, isGroup: true, subtitle: 'GROUP' } : c),
 				}
 			})
-			setActiveView('groups')
+			setActiveView('chats')
 		}
 
 		await addUsersToRoom(conversationId, userIds)

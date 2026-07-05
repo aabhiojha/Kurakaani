@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { MessageSquare, PanelLeftClose, Plus, Search, Settings, UserPlus, Users } from 'lucide-react'
+import { MessageSquare, PanelLeftClose, Plus, Search, Settings, UserPlus } from 'lucide-react'
 import type { ChatSection } from '../../types/chat'
 import { resolveAssetUrl } from '../../lib/config'
 import { cn } from '../../lib/cn'

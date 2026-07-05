@@ -57,7 +57,7 @@ export const conversationsBySection: Record<ChatSection, Conversation[]> = {
 		},
 		{
 			id: 103,
-			section: 'groups',
+			section: 'chats',
 			name: 'Frontend Guild',
 			subtitle: '14 MEMBERS',
 			time: '09:04 AM',
@@ -67,7 +67,7 @@ export const conversationsBySection: Record<ChatSection, Conversation[]> = {
 		},
 		{
 			id: 104,
-			section: 'groups',
+			section: 'chats',
 			name: 'Marketing Ops',
 			subtitle: '6 MEMBERS',
 			time: 'Monday',

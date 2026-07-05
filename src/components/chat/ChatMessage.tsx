@@ -9,10 +9,14 @@ type ChatMessageProps = {
 	isGroupedWithPrevious: boolean
 	isGroupedWithNext: boolean
 	onRetry?: (messageId: number) => void
+	onReaction?: (messageId: number, emoji: string) => void
 }
 
-export function ChatMessage({ message, isGroupedWithPrevious, isGroupedWithNext, onRetry }: ChatMessageProps) {
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
+
+export function ChatMessage({ message, isGroupedWithPrevious, isGroupedWithNext, onRetry, onReaction }: ChatMessageProps) {
 	const [isMetaVisible, setIsMetaVisible] = useState(false)
+	const [isReactionMenuOpen, setIsReactionMenuOpen] = useState(false)
 	const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
 	const messageMetaRef = useRef<HTMLDivElement | null>(null)
 	const isSystemMessage = message.senderName === 'System'
@@ -86,6 +90,7 @@ export function ChatMessage({ message, isGroupedWithPrevious, isGroupedWithNext,
 						<div ref={messageMetaRef} className="group relative">
 							<div
 								onClick={() => setIsMetaVisible((previous) => !previous)}
+								onMouseLeave={() => setIsReactionMenuOpen(false)}
 								onKeyDown={(event) => {
 									if (event.key === 'Enter' || event.key === ' ') {
 										event.preventDefault()
@@ -95,13 +100,38 @@ export function ChatMessage({ message, isGroupedWithPrevious, isGroupedWithNext,
 								role="button"
 								tabIndex={0}
 								className={cn(
-									'rounded-md3-lg px-3.5 py-2 text-sm leading-relaxed transition-shadow duration-200',
+									'relative rounded-md3-lg px-3.5 py-2 text-sm leading-relaxed transition-shadow duration-200',
 									bubbleStateClass,
 									isRight
 										? 'rounded-br-md bg-md-bubble-sent text-md-on-bubble-sent'
 										: 'rounded-bl-md bg-md-bubble-received text-md-on-bubble-received',
 								)}
 							>
+								{/* Quick Reaction Menu (shows on hover) */}
+								{onReaction && (
+									<div 
+										className={cn(
+											"absolute top-0 -translate-y-1/2 flex items-center gap-1 rounded-full bg-md-surface-container-high px-2 py-1 shadow-md3-2 transition-all duration-200 z-20",
+											isRight ? "left-0 -translate-x-full -ml-2" : "right-0 translate-x-full ml-2",
+											isReactionMenuOpen ? "opacity-100 pointer-events-auto scale-100" : "opacity-0 pointer-events-none scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:scale-100"
+										)}
+										onMouseEnter={() => setIsReactionMenuOpen(true)}
+									>
+										{QUICK_REACTIONS.map((emoji) => (
+											<button
+												key={emoji}
+												className="hover:scale-125 transition-transform p-1"
+												onClick={(e) => {
+													e.stopPropagation()
+													setIsReactionMenuOpen(false)
+													onReaction(message.id, emoji)
+												}}
+											>
+												{emoji}
+											</button>
+										))}
+									</div>
+								)}
 								{message.text ? <p>{message.text}</p> : null}
 								{mediaUrl && message.messageType === 'IMAGE' && (
 									<div className="mt-3 overflow-hidden rounded-md3-sm bg-md-surface-container-low p-2">
@@ -130,6 +160,26 @@ export function ChatMessage({ message, isGroupedWithPrevious, isGroupedWithNext,
 								{mediaUrl && message.messageType === 'AUDIO' && (
 									<div className="mt-2 overflow-hidden rounded-full bg-md-surface-container-low px-3 py-1.5 shadow-inner">
 										<audio src={mediaUrl} controls className="h-8 max-w-[200px] sm:max-w-[250px] outline-none [&::-webkit-media-controls-panel]:bg-transparent" />
+									</div>
+								)}
+								{message.reactions && message.reactions.length > 0 && (
+									<div className={cn("absolute -bottom-3 flex items-center gap-1", isRight ? "left-2" : "right-2")}>
+										{Array.from(new Set(message.reactions.map(r => r.emoji))).map(emoji => {
+											const count = message.reactions?.filter(r => r.emoji === emoji).length || 0;
+											return (
+												<button 
+													key={emoji}
+													onClick={(e) => {
+														e.stopPropagation();
+														if (onReaction) onReaction(message.id, emoji);
+													}}
+													className="flex items-center gap-1 rounded-full bg-md-surface-container-high px-1.5 py-0.5 text-[11px] shadow-sm hover:bg-md-surface-container-highest transition-colors border border-md-outline-variant"
+												>
+													<span>{emoji}</span>
+													{count > 1 && <span className="font-semibold text-md-on-surface-variant">{count}</span>}
+												</button>
+											);
+										})}
 									</div>
 								)}
 							</div>

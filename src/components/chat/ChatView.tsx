@@ -33,6 +33,7 @@ type ChatViewProps = {
 	onUpdateRoomDetails?: (conversationId: number, updates: { name?: string; description?: string }) => Promise<void>
 	onRemoveMembersFromRoom?: (conversationId: number, memberIds: number[]) => Promise<void>
 	onRetryMessage?: (conversationId: number, messageId: number) => void
+	onSendReaction?: (conversationId: number, messageId: number, emoji: string) => void
 	onStartVideoCall?: () => void
 	onStartAudioCall?: () => void
 	isSendDisabled?: boolean
@@ -55,6 +56,7 @@ export function ChatView({
 	onUpdateRoomDetails,
 	onRemoveMembersFromRoom,
 	onRetryMessage,
+	onSendReaction,
 	onStartVideoCall,
 	onStartAudioCall,
 	isSendDisabled = false,
@@ -746,6 +748,11 @@ export function ChatView({
 										onRetry={(messageId) => {
 											if (conversationId) {
 												onRetryMessage?.(conversationId, messageId)
+											}
+										}}
+										onReaction={(messageId, emoji) => {
+											if (conversationId) {
+												onSendReaction?.(conversationId, messageId, emoji)
 											}
 										}}
 									/>

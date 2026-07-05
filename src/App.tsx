@@ -331,7 +331,7 @@ function App() {
 				: `Signed in as ${nextSession.user.name}. Authenticated requests enabled.`,
 		)
 
-		setActiveView('groups')
+		setActiveView('chats')
 		setSelectedConversationId(null)
 		if (isMobile) setMobilePane('list')
 	}
@@ -522,7 +522,6 @@ function App() {
 		if (event.type === 'DM') {
 			const preview = event.payload.preview?.trim()
 			const title = 'New message'
-			const body = preview ?? 'You have a new message.'
 			setBackendStatus(preview ? `New message: ${preview}` : 'New message received.')
 			pushNotification({
 				type: 'DM',

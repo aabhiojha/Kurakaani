@@ -10,7 +10,7 @@ import {
 	isChatSection,
 	normalizeMessageContent,
 } from '../lib/chatUtils'
-import type { Conversation, Message } from '../types/chat'
+import type { Conversation, Message, Reaction } from '../types/chat'
 import type { CurrentUserResponse, SessionState } from '../types/api/session'
 import type { SidebarView } from '../components/layout/Sidebar'
 
@@ -51,6 +51,7 @@ export function useChatSocket({
 	const chatSocketRef = useRef<ChatSocketService>(new ChatSocketService())
 	const subscribedRoomIdRef = useRef<number | null>(null)
 	const subscribedTypingRoomIdRef = useRef<number | null>(null)
+	const subscribedReactionRoomIdRef = useRef<number | null>(null)
 	const pendingSentMessagesRef = useRef<Map<number, Map<string, number>>>(new Map())
 	const typingExpiryTimersRef = useRef<Map<string, number>>(new Map())
 	const tempMessageIdRef = useRef(-1)
@@ -412,10 +413,16 @@ export function useChatSocket({
 		})
 	}
 
+	const handleSendReaction = (conversationId: number, messageId: number, emoji: string) => {
+		if (!session?.accessToken || !session.user.id) return
+		chatSocketRef.current.sendReaction(conversationId, { messageId, emoji })
+	}
+
 	const disconnectAndCleanup = () => {
 		chatSocketRef.current.disconnect()
 		subscribedRoomIdRef.current = null
 		subscribedTypingRoomIdRef.current = null
+		subscribedReactionRoomIdRef.current = null
 		typingExpiryTimersRef.current.forEach((id) => window.clearTimeout(id))
 		typingExpiryTimersRef.current.clear()
 		setTypingUsersByConversation({})
@@ -435,6 +442,7 @@ export function useChatSocket({
 			chatSocketRef.current.disconnect()
 			subscribedRoomIdRef.current = null
 			subscribedTypingRoomIdRef.current = null
+			subscribedReactionRoomIdRef.current = null
 			typingExpiryTimersRef.current.forEach((id) => window.clearTimeout(id))
 			typingExpiryTimersRef.current.clear()
 			pendingMediaUploadsRef.current.clear()
@@ -451,6 +459,7 @@ export function useChatSocket({
 			chatSocketRef.current.disconnect()
 			subscribedRoomIdRef.current = null
 			subscribedTypingRoomIdRef.current = null
+			subscribedReactionRoomIdRef.current = null
 			typingExpiryTimersRef.current.forEach((id) => window.clearTimeout(id))
 			typingExpiryTimersRef.current.clear()
 			setTypingUsersByConversation({})
@@ -515,6 +524,11 @@ export function useChatSocket({
 				clearTypingStateForRoom(prevTypingRoom)
 				subscribedTypingRoomIdRef.current = null
 			}
+			const prevReactionRoom = subscribedReactionRoomIdRef.current
+			if (prevReactionRoom !== null) {
+				chatSocketRef.current.unsubscribeReactions(prevReactionRoom)
+				subscribedReactionRoomIdRef.current = null
+			}
 			return
 		}
 
@@ -578,6 +592,24 @@ export function useChatSocket({
 			})
 		}
 
+		const handleReactionEvent = (event: Reaction & { messageId: number }) => {
+			setMessagesByConversation((prev) => {
+				const current = prev[roomId] ?? []
+				const idx = current.findIndex(m => m.id === event.messageId)
+				if (idx < 0) return prev
+				
+				const message = current[idx]
+				const reactions = (message.reactions ?? []).filter(r => r.userId !== event.userId)
+				if (event.emoji) {
+					reactions.push({ emoji: event.emoji, userId: event.userId, userName: event.userName })
+				}
+				
+				const next = [...current]
+				next[idx] = { ...message, reactions }
+				return { ...prev, [roomId]: next }
+			})
+		}
+
 		const prevRoom = subscribedRoomIdRef.current
 		if (prevRoom !== null && prevRoom !== roomId) {
 			chatSocketRef.current.unsubscribe(prevRoom)
@@ -588,6 +620,11 @@ export function useChatSocket({
 		if (prevTypingRoom !== null && prevTypingRoom !== roomId) {
 			chatSocketRef.current.unsubscribeTyping(prevTypingRoom)
 			clearTypingStateForRoom(prevTypingRoom)
+		}
+
+		const prevReactionRoom = subscribedReactionRoomIdRef.current
+		if (prevReactionRoom !== null && prevReactionRoom !== roomId) {
+			chatSocketRef.current.unsubscribeReactions(prevReactionRoom)
 		}
 
 		// Already subscribed to this room — only re-subscribe typing if missing.
@@ -619,8 +656,10 @@ export function useChatSocket({
 			try {
 				chatSocketRef.current.subscribe(roomId, handleIncomingServerMessage)
 				chatSocketRef.current.subscribeToTyping(roomId, handleTypingEvent)
+				chatSocketRef.current.subscribeToReactions(roomId, handleReactionEvent)
 				subscribedRoomIdRef.current = roomId
 				subscribedTypingRoomIdRef.current = roomId
+				subscribedReactionRoomIdRef.current = roomId
 				setBackendStatus(`Live chat connected to room ${roomId}.`)
 				window.clearInterval(interval)
 			} catch {
@@ -641,6 +680,7 @@ export function useChatSocket({
 		handleTypingStop,
 		handleSendMessage,
 		handleRetryMessage,
+		handleSendReaction,
 		disconnectAndCleanup,
 		pendingSentMessagesRef,
 		chatSocketService: chatSocketRef.current,

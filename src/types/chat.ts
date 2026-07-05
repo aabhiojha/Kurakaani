@@ -1,5 +1,11 @@
 export type ChatSection = 'chats'
 
+export type Reaction = {
+	emoji: string
+	userId: number
+	userName: string
+}
+
 export type Message = {
 	id: number
 	clientId?: string
@@ -16,6 +22,7 @@ export type Message = {
 	mediaFileName?: string
 	deliveryState?: 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
 	retryable?: boolean
+	reactions?: Reaction[]
 }
 
 export type Conversation = {

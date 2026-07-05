@@ -2,6 +2,7 @@ import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { API_BASE_URL } from '../lib/config'
 import type { FriendshipResponse } from '../types/api/friend'
+import type { Reaction } from '../types/chat'
 
 export type ServerMessage = {
 	id: number
@@ -101,6 +102,7 @@ export class ChatSocketService {
 	private client: Client | null = null
 	private roomSubscriptions = new Map<number, StompSubscription[]>()
 	private typingSubscriptions = new Map<number, StompSubscription>()
+	private reactionSubscriptions = new Map<number, StompSubscription>()
 	private directMessageSubscription: StompSubscription | null = null
 	private notificationSubscription: StompSubscription | null = null
 	private webRtcSubscription: StompSubscription | null = null
@@ -270,6 +272,35 @@ export class ChatSocketService {
 		this.log('unsubscribed from typing events', { roomId, destination: `/topic/rooms/${roomId}/typing` })
 	}
 
+	subscribeToReactions(roomId: number, onReactionEvent: (event: Reaction & { messageId: number }) => void) {
+		if (!this.client?.connected) {
+			throw new Error('WebSocket client is not connected')
+		}
+
+		const existing = this.reactionSubscriptions.get(roomId)
+		if (existing) {
+			this.log('replacing reaction subscription', { roomId })
+		}
+		existing?.unsubscribe()
+
+		const subscription = this.client.subscribe(`/topic/rooms/${roomId}/reaction`, (frame: IMessage) => {
+			this.log('incoming reaction frame', { roomId, body: frame.body })
+			onReactionEvent(JSON.parse(frame.body) as Reaction & { messageId: number })
+		})
+
+		this.log('subscribed to reaction events', { roomId, destination: `/topic/rooms/${roomId}/reaction` })
+
+		this.reactionSubscriptions.set(roomId, subscription)
+		return subscription
+	}
+
+	unsubscribeReactions(roomId: number) {
+		const subscription = this.reactionSubscriptions.get(roomId)
+		subscription?.unsubscribe()
+		this.reactionSubscriptions.delete(roomId)
+		this.log('unsubscribed from reaction events', { roomId, destination: `/topic/rooms/${roomId}/reaction` })
+	}
+
 	subscribeToNotifications(onNotificationEvent: (event: NotificationEvent) => void) {
 		if (this.notificationSubscription) {
 			this.notificationSubscription.unsubscribe()
@@ -435,6 +466,20 @@ export class ChatSocketService {
 		return true
 	}
 
+	sendReaction(roomId: number, payload: { messageId: number; emoji: string }) {
+		if (!this.client?.connected) {
+			return false
+		}
+
+		this.client.publish({
+			destination: `/app/chat.reaction/${roomId}`,
+			body: JSON.stringify(payload),
+		})
+		this.log('published reaction event', { roomId, destination: `/app/chat.reaction/${roomId}`, payload })
+
+		return true
+	}
+
 	disconnect() {
 		this.log('disconnecting client')
 		this.roomSubscriptions.forEach((subscriptions) =>
@@ -443,6 +488,8 @@ export class ChatSocketService {
 		this.roomSubscriptions.clear()
 		this.typingSubscriptions.forEach((subscription) => subscription.unsubscribe())
 		this.typingSubscriptions.clear()
+		this.reactionSubscriptions.forEach((subscription) => subscription.unsubscribe())
+		this.reactionSubscriptions.clear()
 		this.unsubscribeDirectMessages()
 		this.unsubscribeWebRTC()
 		this.notificationSubscription?.unsubscribe()
