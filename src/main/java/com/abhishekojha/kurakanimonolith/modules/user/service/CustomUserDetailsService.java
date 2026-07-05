@@ -16,7 +16,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUserName(username)
+        // Fetch roles eagerly: getAuthorities() is invoked by the auth filters after
+        // the persistence session has closed, so LAZY roles would fail there.
+        User user = userRepository.findWithRolesByUserName(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return user;
     }

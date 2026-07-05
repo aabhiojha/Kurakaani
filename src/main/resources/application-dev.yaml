@@ -12,7 +12,9 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-    show-sql: true
+    # SQL is already logged (with bind params) via the org.hibernate.SQL logger
+    # below; show-sql would duplicate every statement to stdout, so keep it off.
+    show-sql: false
 
   servlet:
     multipart:

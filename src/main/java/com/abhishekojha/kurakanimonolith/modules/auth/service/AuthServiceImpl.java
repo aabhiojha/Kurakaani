@@ -79,7 +79,7 @@ public class AuthServiceImpl implements AuthService {
         var jwt = jwtService.generateToken(user);
 
         List<String> roles = user.getRoles().stream().map(Role::getName).toList();
-        publisher.publishEvent(new UserRegisteredEvent(user));
+//        publisher.publishEvent(new UserRegisteredEvent(user));
         log.debug("event=user_registered_event_published userId={}", user.getId());
         return new AuthResponse(jwt, user.getUsername(), roles);
     }
@@ -94,7 +94,8 @@ public class AuthServiceImpl implements AuthService {
                 )
         );
 
-        var user = userRepository.findByUserName(request.getUsername())
+        // Join-fetch roles: this method is not transactional and reads roles below.
+        var user = userRepository.findWithRolesByUserName(request.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         var jwt = jwtService.generateToken(user);

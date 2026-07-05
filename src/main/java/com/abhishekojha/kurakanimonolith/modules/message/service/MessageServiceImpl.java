@@ -56,8 +56,8 @@ public class MessageServiceImpl implements MessageService {
             throw new BadRequestException("Message content is required.");
         }
 
-        Room room = getAuthorizedRoom(roomId, principal);
         User sender = getSender(principal);
+        Room room = getAuthorizedRoom(roomId, sender);
 
         Message savedMessage = saveMessage(
                 room,
@@ -87,8 +87,8 @@ public class MessageServiceImpl implements MessageService {
         MessageType messageType = resolveMessageType(file);
         log.debug("event=media_type_resolved roomId={} messageType={}", roomId, messageType);
 
-        Room room = getAuthorizedRoom(roomId, principal);
         User sender = getSender(principal);
+        Room room = getAuthorizedRoom(roomId, sender);
 
         String folder = switch (messageType) {
             case IMAGE -> "chat/group/" + roomId + "/images";
@@ -153,7 +153,7 @@ public class MessageServiceImpl implements MessageService {
     @Transactional(readOnly = true)
     public List<MessageDto> searchMessagesInRoom(Long roomId, String searchText, Pageable pageable, Principal principal) {
         log.debug("event=search_messages_in_room roomId={} user={} query=\"{}\"", roomId, principal.getName(), searchText);
-        getAuthorizedRoom(roomId, principal);
+        getAuthorizedRoom(roomId, getSender(principal));
         List<MessageDto> results = messageRepository.fullTextSearchByRoom(roomId, searchText, capPageSize(pageable))
                 .stream()
                 .map(messageMapper::toDto)
@@ -198,12 +198,12 @@ public class MessageServiceImpl implements MessageService {
                 .build());
     }
 
-    private Room getAuthorizedRoom(Long roomId, Principal principal) {
+    /** Loads the room and verifies the already-resolved user is a member (no extra user lookup). */
+    private Room getAuthorizedRoom(Long roomId, User sender) {
         Room room = roomRepository.findById(roomId).orElseThrow(
                 () -> new ResourceNotFoundException("Room not found")
         );
 
-        User sender = getSender(principal);
         boolean isMember = roomMemberRepository.existsByRoomIdAndUserId(roomId, sender.getId());
         if (!isMember) {
             log.warn("event=unauthorized_room_access roomId={} userId={}", roomId, sender.getId());

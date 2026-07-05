@@ -52,10 +52,12 @@ public class RoomServiceImpl implements RoomService {
     @Transactional
     public List<RoomMemberDto> getAllMembers(Long roomId) {
         log.debug("event=get_all_members_attempt roomId={}", roomId);
-        Room room = roomRepository.findById(roomId).orElseThrow(
-                () -> new ResourceNotFoundException("Room not found"));
+        if (!roomRepository.existsById(roomId)) {
+            throw new ResourceNotFoundException("Room not found");
+        }
 
-        List<RoomMemberDto> members = roomMemberMapper.toDto(room.getMembers());
+        // Single query with the member's user join-fetched (no per-member N+1).
+        List<RoomMemberDto> members = roomMemberMapper.toDto(roomMemberRepository.findByRoomId(roomId));
         log.info("event=get_all_members_done roomId={} count={}", roomId, members.size());
         return members;
     }
