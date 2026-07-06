@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: kurakani-monolith
+
+  datasource:
+    username: postgres
+    password: postgres
+    url: jdbc:postgresql://localhost:5432/chat-app-db
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    # SQL is already logged (with bind params) via the org.hibernate.SQL logger
+    # below; show-sql would duplicate every statement to stdout, so keep it off.
+    show-sql: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:aojha6822@gmail.com}
+    password: ${MAIL_PASSWORD:randomasspassword}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+
+  logging:
+    level:
+      root: warn
+      com.abhishekojha.kurakanimonolith: debug
+      org.springframework.security: debug
+      org.springframework.web.socket: debug
+      org.hibernate.SQL: debug
+      org.hibernate.orm.jdbc.bind: trace
+
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /docs
+    display-request-duration: true
+
+storage:
+  endpoint: ${STORAGE_ENDPOINT:http://127.0.0.1:9000}
+  access-key: ${STORAGE_ACCESS_KEY:rustfsadmin}
+  secret-key: ${STORAGE_SECRET_KEY:rustfsadmin}
+  bucket: ${STORAGE_BUCKET:kurakaani}
+  region: ${STORAGE_REGION:rustfs}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:VGhpc0lzQVN1ZmZpY2llbnRseUxvbmdTZWNyZXRLZXlGb3JIUzI1Ng==}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:864000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://192.168.1.34:5173,https://unalimentary-emilie-flamboyantly.ngrok-free.dev/}
+

@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: kurakani-monolith
+
+  datasource:
+    # All credentials are required in prod - the app must fail fast if they are missing
+    # rather than silently falling back to well-known values.
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    url: ${DB_URL}
+    driver-class-name: org.postgresql.Driver
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+logging:
+  level:
+    root: info
+    com.abhishekojha.kurakanimonolith: info
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /docs
+    display-request-duration: true
+
+storage:
+  endpoint: ${STORAGE_ENDPOINT}
+  access-key: ${STORAGE_ACCESS_KEY}
+  secret-key: ${STORAGE_SECRET_KEY}
+  bucket: ${STORAGE_BUCKET}
+  region: ${STORAGE_REGION}
+
+app:
+  jwt:
+    # No default: a missing secret must stop startup, never fall back to a committed key.
+    secret: ${JWT_SECRET}
+    expiration-seconds: ${JWT_EXPIRATION_SECONDS:864000}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
