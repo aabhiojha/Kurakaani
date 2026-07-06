@@ -1,0 +1,30 @@
+# Environment
+.env
+*.env
+!.env.example
+
+# --- Node / frontend ---
+node_modules/
+dist/
+*.local
+
+# --- Java / backend ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+logs/
+*.log
+
+# --- IDE / editor ---
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+# (compose files and Dockerfiles are tracked; only local overrides ignored)
+docker-compose.override.yml

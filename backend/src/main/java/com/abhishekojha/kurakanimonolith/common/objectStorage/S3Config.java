@@ -31,6 +31,12 @@ public class S3Config {
                 .endpointOverride(URI.create(endpoint))
                 .region(Region.US_EAST_1)
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
+                // Path-style is required for S3-compatible endpoints (RustFS/MinIO) reached by
+                // hostname; without it the SDK uses virtual-host style (bucket.host) and fails
+                // DNS. The presigner below already does this.
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
                 .build();
     }
 
