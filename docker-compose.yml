@@ -89,3 +89,5 @@ volumes:
   postgres-data:
   redis-data:
   storage-data:
+
+# changing nothing to check the CD
