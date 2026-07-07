@@ -37,11 +37,16 @@ export type FriendRequestNotificationPayload = {
 	legacyFriendship?: FriendshipResponse
 }
 
+export type WebRtcSignalData =
+	| RTCSessionDescriptionInit
+	| RTCIceCandidateInit
+	| { callType?: 'audio' | 'video' }
+
 export type WebRtcSignal = {
 	type: string
 	targetUsername: string
 	senderUsername?: string
-	data: any
+	data: WebRtcSignalData | null
 }
 
 export type DmNotificationPayload = {

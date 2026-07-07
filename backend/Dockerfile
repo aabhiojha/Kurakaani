@@ -4,6 +4,8 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
+RUN mkdir -p /app/logs
+
 # Cache dependencies first (pom rarely changes relative to source)
 COPY pom.xml ./
 COPY .mvn/ .mvn/

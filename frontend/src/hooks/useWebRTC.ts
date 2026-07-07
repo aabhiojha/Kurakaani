@@ -435,7 +435,7 @@ export function useWebRTC(
 				console.debug('[WebRTC] Signal received:', signal.type, 'from', senderUsername)
 
 				if (signal.type === 'call_request') {
-					const callType = signal.data?.callType || 'video'
+					const callType = (signal.data as { callType?: 'audio' | 'video' } | null)?.callType || 'video'
 					incomingCallRef.current = {
 						senderUsername,
 						offer: null,
@@ -455,7 +455,7 @@ export function useWebRTC(
 					// If we have a pending incoming call and no PC yet → buffer for accept
 					const pendingCall = incomingCallRef.current
 					if (pendingCall && !peerConnectionRef.current) {
-						pendingCall.offer = signal.data
+						pendingCall.offer = signal.data as RTCSessionDescriptionInit
 						return
 					}
 
@@ -465,7 +465,7 @@ export function useWebRTC(
 						const callType = 'video' // Default fallback
 						incomingCallRef.current = {
 							senderUsername,
-							offer: signal.data,
+							offer: signal.data as RTCSessionDescriptionInit,
 							pendingCandidates: [],
 							callType
 						}
@@ -475,7 +475,7 @@ export function useWebRTC(
 
 					// PC exists (user already accepted) but offer arrived late — process now
 					if (peerConnectionRef.current && !remoteDescriptionSetRef.current) {
-						await processOffer(peerConnectionRef.current, signal.data, senderUsername, [])
+						await processOffer(peerConnectionRef.current, signal.data as RTCSessionDescriptionInit, senderUsername, [])
 					}
 					return
 				}
@@ -483,7 +483,7 @@ export function useWebRTC(
 				if (signal.type === 'answer') {
 					if (peerConnectionRef.current) {
 						// Pass plain object directly — no deprecated constructor
-						await peerConnectionRef.current.setRemoteDescription(signal.data)
+						await peerConnectionRef.current.setRemoteDescription(signal.data as RTCSessionDescriptionInit)
 						remoteDescriptionSetRef.current = true
 						await flushIceCandidateQueue(peerConnectionRef.current)
 						console.debug('[WebRTC] Answer processed, ICE queue flushed')
@@ -495,17 +495,17 @@ export function useWebRTC(
 					// Buffer in incoming call ref if user hasn't accepted yet
 					const pendingCall = incomingCallRef.current
 					if (pendingCall && !peerConnectionRef.current) {
-						pendingCall.pendingCandidates.push(signal.data)
+						pendingCall.pendingCandidates.push(signal.data as RTCIceCandidateInit)
 						return
 					}
 
 					if (peerConnectionRef.current) {
 						if (!remoteDescriptionSetRef.current) {
-							iceCandidateQueueRef.current.push(signal.data)
+							iceCandidateQueueRef.current.push(signal.data as RTCIceCandidateInit)
 						} else {
 							try {
 								// Pass plain candidate init — no deprecated constructor
-								await peerConnectionRef.current.addIceCandidate(signal.data)
+								await peerConnectionRef.current.addIceCandidate(signal.data as RTCIceCandidateInit)
 							} catch (e) {
 								console.warn('[WebRTC] Failed to add ICE candidate', e)
 							}
