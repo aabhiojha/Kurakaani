@@ -4,8 +4,6 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-RUN mkdir -p /app/logs
-
 # Cache dependencies first (pom rarely changes relative to source)
 COPY pom.xml ./
 COPY .mvn/ .mvn/
@@ -21,7 +19,8 @@ FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app
 
 # Run as a non-root user
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app/logs && chown -R app:app /app
 USER app
 
 COPY --from=build /app/target/*.jar app.jar
