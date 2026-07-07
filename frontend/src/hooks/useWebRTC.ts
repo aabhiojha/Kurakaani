@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import type { ChatSocketService, WebRtcSignal } from '../services/chatSocketService'
+import { callSounds } from '../lib/callSounds'
 
 type IncomingCallInfo = {
 	senderUsername: string
@@ -53,6 +54,7 @@ export function useWebRTC(
 	}, [])
 
 	const cleanup = useCallback(() => {
+		callSounds.stop()
 		stopLocalStream()
 		if (peerConnectionRef.current) {
 			peerConnectionRef.current.close()
@@ -341,6 +343,7 @@ export function useWebRTC(
 			// Send call_request first, then the offer
 			svc.sendWebRtcSignal({ type: 'call_request', targetUsername, data: { callType: audioOnly ? 'audio' : 'video' } })
 			svc.sendWebRtcSignal({ type: 'offer', targetUsername, data: offer })
+			callSounds.playRingback()
 			console.debug('[WebRTC] Call started → offer sent to', targetUsername)
 		} catch (error) {
 			console.error('[WebRTC] Failed to start call', error)
@@ -362,6 +365,7 @@ export function useWebRTC(
 			const targetUsername = pending.senderUsername
 			const audioOnly = pending.callType === 'audio'
 			
+			callSounds.stop()
 			targetUserRef.current = targetUsername
 			setIsCalling(true)
 			setIsAudioOnly(audioOnly)
@@ -443,6 +447,7 @@ export function useWebRTC(
 						callType
 					}
 					setIncomingCall({ senderUsername, callType })
+					callSounds.playRingtone()
 					return
 				}
 
@@ -470,6 +475,7 @@ export function useWebRTC(
 							callType
 						}
 						setIncomingCall({ senderUsername, callType })
+						callSounds.playRingtone()
 						return
 					}
 
@@ -482,6 +488,8 @@ export function useWebRTC(
 
 				if (signal.type === 'answer') {
 					if (peerConnectionRef.current) {
+						// Callee picked up — stop the ringback
+						callSounds.stop()
 						// Pass plain object directly — no deprecated constructor
 						await peerConnectionRef.current.setRemoteDescription(signal.data as RTCSessionDescriptionInit)
 						remoteDescriptionSetRef.current = true
