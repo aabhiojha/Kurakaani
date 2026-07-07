@@ -1,9 +1,9 @@
-import { StrictMode, Component, type ReactNode } from 'react'
+import { StrictMode, Component, type ErrorInfo, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-class GlobalErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null, info: any}> {
+class GlobalErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null, info: ErrorInfo | null}> {
 	constructor(props: {children: ReactNode}) {
 		super(props)
 		this.state = { hasError: false, error: null, info: null }
@@ -13,7 +13,7 @@ class GlobalErrorBoundary extends Component<{children: ReactNode}, {hasError: bo
 		return { hasError: true, error }
 	}
 
-	componentDidCatch(error: Error, info: any) {
+	componentDidCatch(error: Error, info: ErrorInfo) {
 		console.error('Global Crash:', error, info)
 		this.setState({ info })
 	}

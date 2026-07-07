@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
+import type { ChangeEvent, CSSProperties, FormEvent, KeyboardEvent } from 'react'
 import { CircleEllipsis, Image as ImageIcon, Loader2, Plus, Search, SendHorizontal, Smile, UserPlus, Users, Video, Phone, Mic, Square } from 'lucide-react'
 import { ChatMessage } from './ChatMessage'
 
@@ -868,7 +868,7 @@ export function ChatView({
 										onKeyDown={onKeyDown}
 										disabled={isSendDisabled}
 										rows={1}
-										style={{ fieldSizing: 'content', minHeight: '44px', maxHeight: '160px' } as any}
+										style={{ fieldSizing: 'content', minHeight: '44px', maxHeight: '160px' } as CSSProperties}
 										placeholder={`Type your message to ${conversation.name}…`}
 										className="motion-enter-soft w-full resize-none bg-transparent px-2 py-3 text-sm text-md-on-surface outline-none transition-all duration-200 ease-md-standard placeholder:text-md-on-surface-variant disabled:cursor-not-allowed disabled:opacity-60"
 									/>

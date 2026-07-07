@@ -19,7 +19,6 @@ type RecentMessagesPanelProps = {
 }
 
 export function RecentMessagesPanel({
-	section,
 	conversations,
 	selectedConversationId,
 	friends = [],
@@ -33,7 +32,6 @@ export function RecentMessagesPanel({
 	const [createChatStatus, setCreateChatStatus] = useState<string | null>(null)
 	const [isComposerOpen, setIsComposerOpen] = useState(false)
 	const [searchQuery, setSearchQuery] = useState('')
-	const [matchedRoomIds, setMatchedRoomIds] = useState<Set<number> | null>(null)
 	const headerTitle = 'Recent Messages'
 	const searchPlaceholder = 'Search discussions…'
 
@@ -44,13 +42,6 @@ export function RecentMessagesPanel({
 		}
 	}, [newChatTrigger])
 
-	useEffect(() => {
-		const timeoutId = window.setTimeout(() => {
-			setMatchedRoomIds(null)
-		}, 0)
-		return () => window.clearTimeout(timeoutId)
-	}, [section, searchQuery, conversations])
-
 	const visibleConversations = useMemo(() => {
 		const lowered = searchQuery.trim().toLowerCase()
 		if (!lowered) return conversations
@@ -60,7 +51,7 @@ export function RecentMessagesPanel({
 				conversation.name.toLowerCase().includes(lowered) ||
 				conversation.preview.toLowerCase().includes(lowered),
 		)
-	}, [conversations, matchedRoomIds, searchQuery, section])
+	}, [conversations, searchQuery])
 
 	const handleCreateChat = async (event: FormEvent) => {
 		event.preventDefault()

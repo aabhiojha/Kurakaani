@@ -124,7 +124,7 @@ function App() {
 			conversationsState.chats.find((c) => c.id === selectedConversationId) ??
 			conversationsState.chats.find((c) => c.id === selectedConversationId)
 		)
-	}, [activeSection, conversationsState, selectedConversationId])
+	}, [conversationsState, selectedConversationId])
 
 	const activeMessages = activeConversation ? (messagesByConversation[activeConversation.id] ?? []) : []
 	const activeRoomMembers = activeConversation ? (roomMembersByConversation[activeConversation.id] ?? []) : []
