@@ -83,7 +83,7 @@ services:
       VITE_BACKEND_PROXY_TARGET: http://backend:8080
       VITE_STORAGE_PROXY_TARGET: http://storage:9000
     ports:
-      - "5173:5173"
+      - "5175:5173"
 
 volumes:
   postgres-data:
