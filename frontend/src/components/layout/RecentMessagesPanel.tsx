@@ -14,6 +14,7 @@ type RecentMessagesPanelProps = {
 	friends?: FriendUserResponse[]
 	onSelectConversation: (conversationId: number) => void
 	onCreateDirect: (name: string, description: string) => Promise<{ ok: boolean; error?: string }>
+	onCreateGroup: (name: string, description: string) => Promise<{ ok: boolean; error?: string }>
 	newChatTrigger: number
 	className?: string
 }
@@ -24,10 +25,14 @@ export function RecentMessagesPanel({
 	friends = [],
 	onSelectConversation,
 	onCreateDirect,
+	onCreateGroup,
 	newChatTrigger,
 	className = '',
 }: RecentMessagesPanelProps) {
 	const [createName, setCreateName] = useState('')
+	const [groupName, setGroupName] = useState('')
+	const [groupDescription, setGroupDescription] = useState('')
+	const [composerMode, setComposerMode] = useState<'direct' | 'group'>('direct')
 	const [isCreatingChat, setIsCreatingChat] = useState(false)
 	const [createChatStatus, setCreateChatStatus] = useState<string | null>(null)
 	const [isComposerOpen, setIsComposerOpen] = useState(false)
@@ -55,6 +60,30 @@ export function RecentMessagesPanel({
 
 	const handleCreateChat = async (event: FormEvent) => {
 		event.preventDefault()
+
+		if (composerMode === 'group') {
+			const trimmedGroupName = groupName.trim()
+			if (!trimmedGroupName) {
+				setCreateChatStatus('Please enter a group name.')
+				return
+			}
+
+			setIsCreatingChat(true)
+			const result = await onCreateGroup(trimmedGroupName, groupDescription.trim())
+			setIsCreatingChat(false)
+
+			if (result.ok) {
+				setGroupName('')
+				setGroupDescription('')
+				setIsComposerOpen(false)
+				setCreateChatStatus('Group created successfully.')
+				return
+			}
+
+			setCreateChatStatus(result.error ?? 'Failed to create group.')
+			return
+		}
+
 		const trimmedName = createName.trim()
 
 		if (!trimmedName) {
@@ -111,7 +140,9 @@ export function RecentMessagesPanel({
 				{isComposerOpen && (
 					<div className="motion-enter-soft mt-3 rounded-md3-md bg-md-surface-container p-4">
 						<div className="mb-4 flex items-center justify-between">
-							<h3 className="flex-1 text-[17px] font-medium text-md-on-surface">Create Direct Chat</h3>
+							<h3 className="flex-1 text-[17px] font-medium text-md-on-surface">
+								{composerMode === 'group' ? 'Create Group Chat' : 'Create Direct Chat'}
+							</h3>
 							<button
 								type="button"
 								onClick={() => {
@@ -124,19 +155,58 @@ export function RecentMessagesPanel({
 								<Plus size={18} className="rotate-45" />
 							</button>
 						</div>
+						<div className="mb-3 flex gap-1 rounded-full bg-md-surface-container-highest p-1">
+							{(['direct', 'group'] as const).map((mode) => (
+								<button
+									key={mode}
+									type="button"
+									onClick={() => {
+										setComposerMode(mode)
+										setCreateChatStatus(null)
+									}}
+									className={cn(
+										'flex-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-200',
+										composerMode === mode
+											? 'bg-md-secondary-container text-md-on-secondary-container'
+											: 'text-md-on-surface-variant',
+									)}
+								>
+									{mode === 'direct' ? 'Direct' : 'Group'}
+								</button>
+							))}
+						</div>
 						<form onSubmit={handleCreateChat} className="flex flex-col gap-3">
-							<select
-								value={createName}
-								onChange={(event) => setCreateName(event.target.value)}
-								className="h-12 w-full rounded-md3-sm border border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
-							>
-								<option value="">Select a friend…</option>
-								{friends.map((friend) => (
-									<option key={friend.userId} value={String(friend.userId)}>
-										{friend.username}
-									</option>
-								))}
-							</select>
+							{composerMode === 'group' ? (
+								<>
+									<input
+										type="text"
+										value={groupName}
+										onChange={(event) => setGroupName(event.target.value)}
+										placeholder="Group name"
+										className="h-12 w-full rounded-md3-sm border border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 placeholder:text-md-on-surface-variant focus:border-md-primary"
+									/>
+									<input
+										type="text"
+										value={groupDescription}
+										onChange={(event) => setGroupDescription(event.target.value)}
+										placeholder="Description (optional)"
+										className="h-12 w-full rounded-md3-sm border border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 placeholder:text-md-on-surface-variant focus:border-md-primary"
+									/>
+								</>
+							) : (
+								<select
+									value={createName}
+									onChange={(event) => setCreateName(event.target.value)}
+									className="h-12 w-full rounded-md3-sm border border-md-outline bg-md-surface-container-highest px-3 text-sm text-md-on-surface outline-none transition-colors duration-200 focus:border-md-primary"
+								>
+									<option value="">Select a friend…</option>
+									{friends.map((friend) => (
+										<option key={friend.userId} value={String(friend.userId)}>
+											{friend.username}
+										</option>
+									))}
+								</select>
+							)}
 						<div className="mt-3 flex items-center justify-between gap-2">
 							<Button type="submit" size="sm" isLoading={isCreatingChat}>
 								{isCreatingChat ? 'Creating…' : 'Create'}
